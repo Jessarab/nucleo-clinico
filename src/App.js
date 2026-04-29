@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 
 // ── SUPABASE CONFIG ───────────────────────────────────────────────
 // Reemplaza estos valores con los tuyos
-const SUPABASE_URL = https://ytymbqdjhcjdpdinrvqx.supabase.co;
+const SUPABASE_URL = "https://ytymbqdjhcjdpdinrvqx.supabase.co";
 const SUPABASE_KEY = sb_publishable_MY732PI-wkXk3SJ_FIFInA_chi4X3iU;
 
 async function sb(method, table, body, query = "") {
