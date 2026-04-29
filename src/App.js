@@ -210,7 +210,7 @@ function LabForm({ pacienteId, onSave, onCancel }) {
 // ── Session Form ──────────────────────────────────────────────────
 function SessionForm({ pacienteId, num, onSave, onCancel }) {
   const isInBody = num % 2 === 0;
-  const [vals, setVals] = useState({ fecha: new Date().toISOString().split("T")[0], num, inbody_realizado: isInBody, evento_adverso: false, malestar_gi: false, ajuste_dosis: false, adherencia: "Buena" });
+  const [vals, setVals] = useState({ fecha: new Date().toISOString().split("T")[0], num, inbody_realizado: isInBody, evento_adverso: false, malestar_gi: false, ajuste_dosis: false, adherencia: "Buena", dosis_mounjaro: "2.5mg" });
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setVals((p) => ({ ...p, [k]: v }));
 
@@ -237,7 +237,12 @@ function SessionForm({ pacienteId, num, onSave, onCancel }) {
           </select>
         </Field>
       </div>
-      <div style={{ ...S.grid(2), marginBottom: 14 }}>
+      <div style={{ ...S.grid(3), marginBottom: 14 }}>
+        <Field label="💉 Dosis Mounjaro">
+          <select style={{ ...S.select, borderColor: C.accent + "88", color: C.accent, fontWeight: 600 }} value={vals.dosis_mounjaro || "2.5mg"} onChange={(e) => set("dosis_mounjaro", e.target.value)}>
+            {["1.5mg (introducción)", "2.5mg", "5mg", "7.5mg", "10mg"].map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+        </Field>
         <Field label="Cintura (cm)"><input style={S.input} type="number" step="0.1" value={vals.cintura_cm || ""} onChange={(e) => set("cintura_cm", e.target.value)} /></Field>
         <Field label="Cadera (cm)"><input style={S.input} type="number" step="0.1" value={vals.cadera_cm || ""} onChange={(e) => set("cadera_cm", e.target.value)} /></Field>
       </div>
@@ -337,6 +342,12 @@ function PatientDetail({ patient, onUpdate, onBack }) {
       .finally(() => setLoading(false));
   }, [patient.id]);
 
+  // Calcular dosis actual y semanas en esa dosis
+  const lastSesion = sesiones[sesiones.length - 1];
+  const dosisActual = lastSesion?.dosis_mounjaro || null;
+  const semanasEnDosis = dosisActual ? [...sesiones].reverse().findIndex(s => s.dosis_mounjaro !== dosisActual) : 0;
+  const semanasMostrar = semanasEnDosis === -1 ? sesiones.length : semanasEnDosis;
+
   const weightVals = sesiones.map(s => parseFloat(s.peso_kg)).filter(Boolean);
   const cinturaVals = sesiones.map(s => parseFloat(s.cintura_cm)).filter(Boolean);
   const lastLab = labs[0];
@@ -362,8 +373,8 @@ function PatientDetail({ patient, onUpdate, onBack }) {
 
       {!loading && tab === "resumen" && (
         <div>
-          <div style={S.grid(4)}>
-            {[["Sesiones", sesiones.length], ["Último peso", weightVals.length ? `${weightVals[weightVals.length - 1]} kg` : "—"], ["Última cintura", cinturaVals.length ? `${cinturaVals[cinturaVals.length - 1]} cm` : "—"], ["Labs registrados", labs.length]].map(([lbl, val]) => (
+          <div style={S.grid(5)}>
+            {[["Dosis actual", dosisActual ? dosisActual + " — " + semanasMostrar + " sem" : "—"], ["Sesiones", sesiones.length], ["Último peso", weightVals.length ? `${weightVals[weightVals.length - 1]} kg` : "—"], ["Última cintura", cinturaVals.length ? `${cinturaVals[cinturaVals.length - 1]} cm` : "—"], ["Labs registrados", labs.length]].map(([lbl, val]) => (
               <div key={lbl} style={S.statBox}><div style={S.statVal}>{val}</div><div style={S.statLabel}>{lbl}</div></div>
             ))}
           </div>
@@ -411,6 +422,7 @@ function PatientDetail({ patient, onUpdate, onBack }) {
                 </div>
               )}
               <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+                {s.dosis_mounjaro && <span style={S.badge(C.accent)}>💉 {s.dosis_mounjaro}</span>}
                 {s.malestar_gi && <span style={S.tag(false)}>GI: {s.tipo_gi}</span>}
                 {s.evento_adverso && <span style={S.tag(false)}>⚠️ {s.tipo_ea}</span>}
                 {s.ajuste_dosis && <span style={S.badge(C.warn)}>💊 {s.nota_ajuste}</span>}
