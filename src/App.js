@@ -526,7 +526,7 @@ function Dashboard({ patients }) {
 function Login({ onLogin }) {
   const [pw, setPw] = useState("");
   const [err, setErr] = useState(false);
-  const handle = () => { if (pw === "nucleo2025") onLogin(); else { setErr(true); setTimeout(() => setErr(false), 1500); } };
+  const handle = () => { if (pw === "Pxnss1711") onLogin(); else { setErr(true); setTimeout(() => setErr(false), 1500); } };
   return (
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ width: 320, ...S.card, padding: 32 }}>
