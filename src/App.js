@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 
 // ── SUPABASE CONFIG ───────────────────────────────────────────────
-// Reemplaza estos valores con los tuyos
 const SUPABASE_URL = "https://ytymbqdjhcjdpdinrvqx.supabase.co";
 const SUPABASE_KEY = "sb_publishable_MY732PI-wkXk3SJ_FIFInA_chi4X3iU";
 
@@ -12,20 +11,17 @@ async function sb(method, table, body, query = "") {
       "Content-Type": "application/json",
       "apikey": SUPABASE_KEY,
       "Authorization": `Bearer ${SUPABASE_KEY}`,
-      "Prefer": method === "POST" ? "return=representation" : "return=representation",
+      "Prefer": "return=representation",
     },
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(err);
-  }
+  if (!res.ok) { const err = await res.text(); throw new Error(err); }
   const text = await res.text();
   return text ? JSON.parse(text) : [];
 }
 
 const db = {
-  getPacientes: () => sb("GET", "pacientes", null, "?order=created_at.desc"),
+  getPacientes: () => sb("GET", "pacientes", null, "?order=nombre.asc"),
   createPaciente: (p) => sb("POST", "pacientes", p),
   updatePaciente: (id, p) => sb("PATCH", "pacientes", p, `?id=eq.${id}`),
   getSesiones: (pid) => sb("GET", "sesiones", null, `?paciente_id=eq.${pid}&order=num.asc`),
@@ -39,6 +35,7 @@ const C = {
   bg: "#0d1117", surface: "#161b22", card: "#1c2330", border: "#2a3441",
   accent: "#00d4aa", accentDim: "#00d4aa22", warn: "#f59e0b",
   danger: "#ef4444", ok: "#22c55e", text: "#e6edf3", muted: "#7d8590", label: "#a0aab4",
+  purple: "#a78bfa", purpleDim: "#a78bfa22",
 };
 
 const S = {
@@ -103,6 +100,214 @@ function labStatus(key, val) {
   return val < r[0] || val > r[1] ? "danger" : "ok";
 }
 
+// ── MEMBRESÍA CONSTANTS ───────────────────────────────────────────
+const PLAN_LABELS = { sin_plan: "Sin plan", esencial: "Esencial", avanzado: "Avanzado", integral: "Integral" };
+const PLAN_COLORS = { sin_plan: C.muted, esencial: C.ok, avanzado: C.warn, integral: C.purple };
+
+// ── MEMBRESÍA TAB (dentro de paciente) ───────────────────────────
+function MembresiaPaciente({ patient, onUpdate }) {
+  const [vals, setVals] = useState({
+    plan: patient.plan || "sin_plan",
+    dosis_actual: patient.dosis_actual || "2.5",
+    apps_total: patient.apps_total || 0,
+    apps_usadas: patient.apps_usadas || 0,
+    fecha_inicio_plan: patient.fecha_inicio_plan || "",
+    notas_membresia: patient.notas_membresia || "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const set = (k, v) => setVals(p => ({ ...p, [k]: v }));
+
+  const restantes = Math.max(0, (vals.apps_total || 0) - (vals.apps_usadas || 0));
+  const pct = vals.apps_total > 0 ? Math.round((vals.apps_usadas / vals.apps_total) * 100) : 0;
+  const planColor = PLAN_COLORS[vals.plan] || C.muted;
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const payload = {
+        plan: vals.plan,
+        dosis_actual: vals.dosis_actual,
+        apps_total: vals.plan === "sin_plan" ? 0 : parseInt(vals.apps_total) || 0,
+        apps_usadas: vals.plan === "sin_plan" ? 0 : parseInt(vals.apps_usadas) || 0,
+        fecha_inicio_plan: vals.fecha_inicio_plan || null,
+        notas_membresia: vals.notas_membresia || null,
+      };
+      await db.updatePaciente(patient.id, payload);
+      onUpdate({ ...patient, ...payload });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (e) { alert("Error: " + e.message); }
+    setSaving(false);
+  };
+
+  return (
+    <div>
+      {/* Status card */}
+      <div style={{ ...S.card, borderColor: planColor + "55", background: planColor + "11", marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 11, color: C.muted, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>Plan actual</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: planColor }}>{PLAN_LABELS[vals.plan]}</div>
+            {vals.fecha_inicio_plan && <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>Desde {vals.fecha_inicio_plan}</div>}
+          </div>
+          {vals.plan !== "sin_plan" && (
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 11, color: C.muted, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>Aplicaciones</div>
+              <div style={{ display: "flex", gap: 4, justifyContent: "flex-end", marginBottom: 6 }}>
+                {Array.from({ length: vals.apps_total || 0 }, (_, i) => (
+                  <div key={i} style={{ width: 12, height: 12, borderRadius: "50%", background: i < (vals.apps_usadas || 0) ? C.border : planColor }} />
+                ))}
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: restantes === 0 ? C.danger : restantes <= 1 ? C.warn : planColor }}>
+                {restantes} de {vals.apps_total} restantes
+              </div>
+              {/* progress bar */}
+              <div style={{ width: 140, height: 4, background: C.border, borderRadius: 2, marginTop: 6, overflow: "hidden" }}>
+                <div style={{ width: `${pct}%`, height: "100%", background: restantes === 0 ? C.danger : restantes <= 1 ? C.warn : planColor, borderRadius: 2, transition: "width 0.3s" }} />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Form */}
+      <div style={S.card}>
+        <div style={S.cardTitle}>Editar membresía</div>
+        <div style={{ ...S.grid(2), marginBottom: 14 }}>
+          <Field label="Plan">
+            <select style={S.select} value={vals.plan} onChange={e => set("plan", e.target.value)}>
+              {Object.entries(PLAN_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </Field>
+          <Field label="Dosis actual (mg)">
+            <select style={S.select} value={vals.dosis_actual} onChange={e => set("dosis_actual", e.target.value)}>
+              {["2.5", "5", "7.5", "10"].map(d => <option key={d} value={d}>{d} mg</option>)}
+            </select>
+          </Field>
+        </div>
+        {vals.plan !== "sin_plan" && (
+          <div style={{ ...S.grid(3), marginBottom: 14 }}>
+            <Field label="Apps incluidas en el plan">
+              <input style={S.input} type="number" min="0" max="20" value={vals.apps_total} onChange={e => set("apps_total", e.target.value)} />
+            </Field>
+            <Field label="Apps ya aplicadas">
+              <input style={S.input} type="number" min="0" max="20" value={vals.apps_usadas} onChange={e => set("apps_usadas", e.target.value)} />
+            </Field>
+            <Field label="Fecha inicio de plan">
+              <input style={S.input} type="date" value={vals.fecha_inicio_plan} onChange={e => set("fecha_inicio_plan", e.target.value)} />
+            </Field>
+          </div>
+        )}
+        <Field label="Notas">
+          <textarea style={{ ...S.textarea, marginBottom: 14 }} value={vals.notas_membresia} onChange={e => set("notas_membresia", e.target.value)} placeholder="Observaciones sobre el plan..." />
+        </Field>
+        <button style={{ ...S.btn("primary"), background: saved ? C.ok : C.accent }} onClick={handleSave} disabled={saving}>
+          {saving ? "Guardando..." : saved ? "✓ Guardado" : "Guardar cambios"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── VISTA GLOBAL DE MEMBRESÍAS ────────────────────────────────────
+function MembresiasView({ patients, onSelectPatient, onUpdate }) {
+  const [filter, setFilter] = useState("todos");
+  const [search, setSearch] = useState("");
+
+  const real = patients.filter(p => p.nombre !== "test");
+
+  const stats = {
+    total: real.length,
+    conPlan: real.filter(p => p.plan && p.plan !== "sin_plan").length,
+    sinPlan: real.filter(p => !p.plan || p.plan === "sin_plan").length,
+    alerta: real.filter(p => p.plan && p.plan !== "sin_plan" && Math.max(0, (p.apps_total || 0) - (p.apps_usadas || 0)) <= 1).length,
+  };
+
+  let list = real.filter(p => p.nombre.toLowerCase().includes(search.toLowerCase()));
+  if (filter === "con_plan") list = list.filter(p => p.plan && p.plan !== "sin_plan");
+  if (filter === "sin_plan") list = list.filter(p => !p.plan || p.plan === "sin_plan");
+  if (filter === "alerta") list = list.filter(p => p.plan && p.plan !== "sin_plan" && Math.max(0, (p.apps_total || 0) - (p.apps_usadas || 0)) <= 1);
+
+  const chips = [
+    { key: "todos", label: "Todos" },
+    { key: "con_plan", label: "Con membresía" },
+    { key: "sin_plan", label: "Sin plan" },
+    { key: "alerta", label: "⚠ Por agotar" },
+  ];
+
+  return (
+    <div>
+      {/* Stats */}
+      <div style={{ ...S.grid(4), marginBottom: 20 }}>
+        {[
+          ["Total pacientes", stats.total, C.accent],
+          ["Con membresía", stats.conPlan, C.ok],
+          ["Sin plan", stats.sinPlan, C.muted],
+          ["Apps por agotar", stats.alerta, stats.alerta > 0 ? C.warn : C.muted],
+        ].map(([lbl, val, color]) => (
+          <div key={lbl} style={{ ...S.statBox, borderColor: color + "44" }}>
+            <div style={{ ...S.statVal, color }}>{val}</div>
+            <div style={S.statLabel}>{lbl}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Toolbar */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 6 }}>
+          {chips.map(c => (
+            <button key={c.key} onClick={() => setFilter(c.key)} style={{ padding: "5px 14px", borderRadius: 20, fontSize: 12, cursor: "pointer", border: `1px solid ${filter === c.key ? C.accent : C.border}`, background: filter === c.key ? C.accentDim : "transparent", color: filter === c.key ? C.accent : C.muted, fontWeight: filter === c.key ? 600 : 400 }}>
+              {c.label}
+            </button>
+          ))}
+        </div>
+        <input style={{ ...S.input, flex: 1, minWidth: 180 }} placeholder="Buscar paciente..." value={search} onChange={e => setSearch(e.target.value)} />
+      </div>
+
+      {/* Cards grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
+        {list.map(p => {
+          const plan = p.plan || "sin_plan";
+          const color = PLAN_COLORS[plan];
+          const rest = Math.max(0, (p.apps_total || 0) - (p.apps_usadas || 0));
+          const total = p.apps_total || 0;
+          const used = p.apps_usadas || 0;
+          const isAlerta = plan !== "sin_plan" && rest <= 1;
+
+          return (
+            <div
+              key={p.id}
+              onClick={() => onSelectPatient(p)}
+              style={{ ...S.card, cursor: "pointer", borderColor: isAlerta ? (rest === 0 ? C.danger + "88" : C.warn + "88") : C.border, borderLeft: `3px solid ${isAlerta ? (rest === 0 ? C.danger : C.warn) : color}`, marginBottom: 0, transition: "border-color 0.15s" }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = color + "88"}
+              onMouseLeave={e => e.currentTarget.style.borderColor = isAlerta ? (rest === 0 ? C.danger + "88" : C.warn + "88") : C.border}
+            >
+              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, lineHeight: 1.3 }}>{p.nombre}</div>
+              <span style={S.badge(color)}>{PLAN_LABELS[plan]}</span>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 6, fontFamily: "monospace" }}>{p.dosis_actual || "2.5"} mg</div>
+              {plan !== "sin_plan" && total > 0 && (
+                <div style={{ marginTop: 10 }}>
+                  <div style={{ display: "flex", gap: 3, marginBottom: 5 }}>
+                    {Array.from({ length: total }, (_, i) => (
+                      <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: i < used ? C.border : color }} />
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 12, color: rest === 0 ? C.danger : rest <= 1 ? C.warn : C.muted, fontWeight: rest <= 1 ? 600 : 400 }}>
+                    {rest === 0 ? "Sin apps restantes" : `${rest} de ${total} restantes`}
+                  </div>
+                </div>
+              )}
+              {plan === "sin_plan" && <div style={{ fontSize: 11, color: C.muted, marginTop: 8, fontStyle: "italic" }}>Click para asignar plan</div>}
+            </div>
+          );
+        })}
+      </div>
+      {list.length === 0 && <div style={{ textAlign: "center", color: C.muted, padding: 40 }}>No hay pacientes que coincidan.</div>}
+    </div>
+  );
+}
+
 // ── AI Lab Reader ─────────────────────────────────────────────────
 function AILabReader({ onExtracted }) {
   const [loading, setLoading] = useState(false);
@@ -139,9 +344,7 @@ Analiza este resultado y extrae los valores. Responde SOLO con JSON válido sin 
       const data = await resp.json();
       const text = data.content.map((b) => b.text || "").join("");
       onExtracted(JSON.parse(text.replace(/```json|```/g, "").trim()));
-    } catch (err) {
-      alert("Error al procesar el archivo.");
-    }
+    } catch (err) { alert("Error al procesar el archivo."); }
     setLoading(false);
   };
 
@@ -208,8 +411,9 @@ function LabForm({ pacienteId, onSave, onCancel }) {
 }
 
 // ── Session Form ──────────────────────────────────────────────────
+// InBody en sesiones impares (1, 3, 5...) — desde la primera
 function SessionForm({ pacienteId, num, onSave, onCancel }) {
-  const isInBody = num % 2 === 0;
+  const isInBody = num % 2 !== 0;
   const [vals, setVals] = useState({ fecha: new Date().toISOString().split("T")[0], num, inbody_realizado: isInBody, evento_adverso: false, malestar_gi: false, ajuste_dosis: false, adherencia: "Buena", dosis_mounjaro: "2.5mg" });
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setVals((p) => ({ ...p, [k]: v }));
@@ -218,7 +422,12 @@ function SessionForm({ pacienteId, num, onSave, onCancel }) {
     setSaving(true);
     try {
       const payload = { paciente_id: pacienteId, ...vals };
-      ["peso_kg", "cintura_cm", "cadera_cm", "inbody_grasa", "inbody_musculo", "inbody_agua"].forEach(k => { if (payload[k] !== undefined && payload[k] !== "") payload[k] = parseFloat(payload[k]) || null; else payload[k] = null; });
+      ["peso_kg", "cintura_cm", "cadera_cm", "inbody_musculo", "inbody_grasa", "inbody_grasa_visceral"].forEach(k => {
+        if (payload[k] !== undefined && payload[k] !== "") payload[k] = parseFloat(payload[k]) || null;
+        else payload[k] = null;
+      });
+      // agua ya no se usa, forzar null
+      payload.inbody_agua = null;
       const result = await db.createSesion(payload);
       onSave(result[0]);
     } catch (e) { alert("Error al guardar: " + e.message); }
@@ -227,7 +436,13 @@ function SessionForm({ pacienteId, num, onSave, onCancel }) {
 
   return (
     <div style={S.card}>
-      <div style={S.cardTitle}>Sesión #{num}</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+        <div style={S.cardTitle}>Sesión #{num}</div>
+        {isInBody && <span style={S.badge(C.accent)}>📊 InBody + mediciones</span>}
+        {!isInBody && <span style={{ fontSize: 12, color: C.muted }}>Solo seguimiento</span>}
+      </div>
+
+      {/* Siempre visible */}
       <div style={{ ...S.grid(3), marginBottom: 14 }}>
         <Field label="Fecha"><input style={S.input} type="date" value={vals.fecha} onChange={(e) => set("fecha", e.target.value)} /></Field>
         <Field label="Peso (kg)"><input style={S.input} type="number" step="0.1" value={vals.peso_kg || ""} onChange={(e) => set("peso_kg", e.target.value)} /></Field>
@@ -237,35 +452,55 @@ function SessionForm({ pacienteId, num, onSave, onCancel }) {
           </select>
         </Field>
       </div>
-      <div style={{ ...S.grid(3), marginBottom: 14 }}>
+      <div style={{ ...S.grid(2), marginBottom: 14 }}>
         <Field label="💉 Dosis Mounjaro">
           <select style={{ ...S.select, borderColor: C.accent + "88", color: C.accent, fontWeight: 600 }} value={vals.dosis_mounjaro || "2.5mg"} onChange={(e) => set("dosis_mounjaro", e.target.value)}>
             {["1.5mg (introducción)", "2.5mg", "5mg", "7.5mg", "10mg"].map(o => <option key={o} value={o}>{o}</option>)}
           </select>
         </Field>
-        <Field label="Cintura (cm)"><input style={S.input} type="number" step="0.1" value={vals.cintura_cm || ""} onChange={(e) => set("cintura_cm", e.target.value)} /></Field>
-        <Field label="Cadera (cm)"><input style={S.input} type="number" step="0.1" value={vals.cadera_cm || ""} onChange={(e) => set("cadera_cm", e.target.value)} /></Field>
       </div>
+
+      {/* Solo en sesiones InBody (impares) */}
       {isInBody && (
-        <div style={{ ...S.card, background: C.surface, marginBottom: 14 }}>
-          <div style={{ fontSize: 12, color: C.accent, fontWeight: 600, marginBottom: 10 }}>📊 InBody (sesión par)</div>
+        <div style={{ ...S.card, background: C.surface, marginBottom: 14, borderColor: C.accent + "44" }}>
+          <div style={{ fontSize: 12, color: C.accent, fontWeight: 600, marginBottom: 12 }}>📊 InBody + Mediciones antropométricas</div>
+          <div style={{ ...S.grid(2), marginBottom: 12 }}>
+            <Field label="Cintura (cm)"><input style={S.input} type="number" step="0.1" value={vals.cintura_cm || ""} onChange={(e) => set("cintura_cm", e.target.value)} /></Field>
+            <Field label="Cadera (cm)"><input style={S.input} type="number" step="0.1" value={vals.cadera_cm || ""} onChange={(e) => set("cadera_cm", e.target.value)} /></Field>
+          </div>
           <div style={S.grid(3)}>
-            <Field label="% Grasa"><input style={S.input} type="number" step="0.1" value={vals.inbody_grasa || ""} onChange={(e) => set("inbody_grasa", e.target.value)} /></Field>
-            <Field label="Masa muscular (kg)"><input style={S.input} type="number" step="0.1" value={vals.inbody_musculo || ""} onChange={(e) => set("inbody_musculo", e.target.value)} /></Field>
-            <Field label="Agua corporal (%)"><input style={S.input} type="number" step="0.1" value={vals.inbody_agua || ""} onChange={(e) => set("inbody_agua", e.target.value)} /></Field>
+            <Field label="MME — Masa Muscular Esq. (kg)"><input style={S.input} type="number" step="0.1" value={vals.inbody_musculo || ""} onChange={(e) => set("inbody_musculo", e.target.value)} /></Field>
+            <Field label="Masa Grasa Corporal (kg)"><input style={S.input} type="number" step="0.1" value={vals.inbody_grasa || ""} onChange={(e) => set("inbody_grasa", e.target.value)} /></Field>
+            <Field label="Grasa Visceral (nivel)"><input style={S.input} type="number" step="1" min="1" value={vals.inbody_grasa_visceral || ""} onChange={(e) => set("inbody_grasa_visceral", e.target.value)} /></Field>
           </div>
         </div>
       )}
-      <div style={{ display: "flex", gap: 20, marginBottom: 14, flexWrap: "wrap" }}>
-        {[["evento_adverso", "⚠️ Evento adverso"], ["malestar_gi", "🫁 Malestar GI"], ["ajuste_dosis", "💊 Ajuste de dosis"]].map(([k, lbl]) => (
-          <label key={k} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
-            <input type="checkbox" checked={vals[k]} onChange={(e) => set(k, e.target.checked)} />{lbl}
+
+      {/* Síntomas / efectos secundarios unificados */}
+      <div style={{ ...S.card, background: C.surface, marginBottom: 14 }}>
+        <div style={{ fontSize: 12, color: C.muted, fontWeight: 600, marginBottom: 12 }}>Síntomas y efectos secundarios</div>
+        <div style={{ display: "flex", gap: 20, marginBottom: 12, flexWrap: "wrap" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
+            <input type="checkbox" checked={vals.evento_adverso || vals.malestar_gi} onChange={(e) => { set("evento_adverso", e.target.checked); set("malestar_gi", e.target.checked); }} />
+            ⚠️ Presentó síntomas / efectos secundarios
           </label>
-        ))}
+          <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
+            <input type="checkbox" checked={vals.ajuste_dosis} onChange={(e) => set("ajuste_dosis", e.target.checked)} />
+            💊 Ajuste de dosis
+          </label>
+        </div>
+        {(vals.evento_adverso || vals.malestar_gi) && (
+          <Field label="Describir síntomas (GI, náuseas, estreñimiento, otros)">
+            <input style={{ ...S.input, marginBottom: 0 }} placeholder="Ej: náuseas leves, estreñimiento..." value={vals.tipo_ea || vals.tipo_gi || ""} onChange={(e) => { set("tipo_ea", e.target.value); set("tipo_gi", e.target.value); }} />
+          </Field>
+        )}
+        {vals.ajuste_dosis && (
+          <Field label="Nota de ajuste">
+            <input style={{ ...S.input, marginTop: 10 }} value={vals.nota_ajuste || ""} onChange={(e) => set("nota_ajuste", e.target.value)} />
+          </Field>
+        )}
       </div>
-      {vals.evento_adverso && <Field label="Describir evento adverso"><input style={{ ...S.input, marginBottom: 12 }} value={vals.tipo_ea || ""} onChange={(e) => set("tipo_ea", e.target.value)} /></Field>}
-      {vals.malestar_gi && <Field label="Tipo de malestar GI"><input style={{ ...S.input, marginBottom: 12 }} placeholder="Ej: náuseas, estreñimiento..." value={vals.tipo_gi || ""} onChange={(e) => set("tipo_gi", e.target.value)} /></Field>}
-      {vals.ajuste_dosis && <Field label="Nota de ajuste"><input style={{ ...S.input, marginBottom: 12 }} value={vals.nota_ajuste || ""} onChange={(e) => set("nota_ajuste", e.target.value)} /></Field>}
+
       <Field label="Notas de sesión"><textarea style={{ ...S.textarea, marginBottom: 14 }} value={vals.notas || ""} onChange={(e) => set("notas", e.target.value)} /></Field>
       <div style={{ display: "flex", gap: 8 }}>
         <button style={S.btn("primary")} onClick={handleSave} disabled={saving}>{saving ? "Guardando..." : "Guardar sesión"}</button>
@@ -335,6 +570,7 @@ function PatientDetail({ patient, onUpdate, onBack }) {
   const [addLab, setAddLab] = useState(false);
   const [editProfile, setEditProfile] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [localPatient, setLocalPatient] = useState(patient);
 
   useEffect(() => {
     Promise.all([db.getSesiones(patient.id), db.getLabs(patient.id)])
@@ -342,29 +578,36 @@ function PatientDetail({ patient, onUpdate, onBack }) {
       .finally(() => setLoading(false));
   }, [patient.id]);
 
-  // Calcular dosis actual y semanas en esa dosis
   const lastSesion = sesiones[sesiones.length - 1];
   const dosisActual = lastSesion?.dosis_mounjaro || null;
   const semanasEnDosis = dosisActual ? [...sesiones].reverse().findIndex(s => s.dosis_mounjaro !== dosisActual) : 0;
   const semanasMostrar = semanasEnDosis === -1 ? sesiones.length : semanasEnDosis;
-
   const weightVals = sesiones.map(s => parseFloat(s.peso_kg)).filter(Boolean);
   const cinturaVals = sesiones.map(s => parseFloat(s.cintura_cm)).filter(Boolean);
   const lastLab = labs[0];
+  const planColor = PLAN_COLORS[localPatient.plan || "sin_plan"];
+
+  const handleMembresiaSave = (updated) => {
+    setLocalPatient(updated);
+    onUpdate(updated);
+  };
 
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20 }}>
         <button style={{ ...S.btn("secondary"), padding: "6px 12px" }} onClick={onBack}>← Volver</button>
         <div>
-          <div style={{ fontSize: 18, fontWeight: 700 }}>{patient.nombre}</div>
-          <div style={{ fontSize: 12, color: C.muted }}>{patient.edad} años · {patient.sexo === "F" ? "Femenino" : "Masculino"} · Ingreso: {patient.fecha_ingreso}</div>
+          <div style={{ fontSize: 18, fontWeight: 700 }}>{localPatient.nombre}</div>
+          <div style={{ fontSize: 12, color: C.muted }}>{localPatient.edad} años · {localPatient.sexo === "F" ? "Femenino" : "Masculino"} · Ingreso: {localPatient.fecha_ingreso}</div>
         </div>
-        <div style={{ marginLeft: "auto" }}><span style={S.badge(C.accent)}>{patient.diagnostico?.split(",")[0]}</span></div>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
+          <span style={S.badge(planColor)}>{PLAN_LABELS[localPatient.plan || "sin_plan"]}</span>
+          <span style={S.badge(C.accent)}>{localPatient.diagnostico?.split(",")[0]}</span>
+        </div>
       </div>
 
       <div style={{ display: "flex", gap: 4, marginBottom: 20, borderBottom: `1px solid ${C.border}` }}>
-        {["resumen", "sesiones", "laboratorios", "perfil"].map(t => (
+        {["resumen", "membresía", "sesiones", "laboratorios", "perfil"].map(t => (
           <button key={t} onClick={() => setTab(t)} style={{ background: "none", border: "none", borderBottom: `2px solid ${tab === t ? C.accent : "transparent"}`, color: tab === t ? C.accent : C.muted, padding: "8px 16px", cursor: "pointer", fontWeight: tab === t ? 600 : 400, fontSize: 13, textTransform: "capitalize" }}>{t}</button>
         ))}
       </div>
@@ -378,6 +621,25 @@ function PatientDetail({ patient, onUpdate, onBack }) {
               <div key={lbl} style={S.statBox}><div style={S.statVal}>{val}</div><div style={S.statLabel}>{lbl}</div></div>
             ))}
           </div>
+          {/* Membresía mini-card en resumen */}
+          {localPatient.plan && localPatient.plan !== "sin_plan" && (
+            <div style={{ ...S.card, borderColor: planColor + "55", background: planColor + "11", marginTop: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontSize: 11, color: C.muted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>Membresía</div>
+                  <div style={{ fontWeight: 600, color: planColor }}>{PLAN_LABELS[localPatient.plan]}</div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ display: "flex", gap: 3, justifyContent: "flex-end", marginBottom: 4 }}>
+                    {Array.from({ length: localPatient.apps_total || 0 }, (_, i) => (
+                      <div key={i} style={{ width: 10, height: 10, borderRadius: "50%", background: i < (localPatient.apps_usadas || 0) ? C.border : planColor }} />
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 12, color: C.muted }}>{Math.max(0, (localPatient.apps_total || 0) - (localPatient.apps_usadas || 0))} apps restantes</div>
+                </div>
+              </div>
+            </div>
+          )}
           <div style={{ ...S.grid(2), marginTop: 16 }}>
             <div style={S.card}><div style={S.cardTitle}>Evolución de peso</div><Sparkline values={weightVals} />{weightVals.length >= 2 && <div style={{ fontSize: 11, color: C.muted, marginTop: 6 }}>Δ {(weightVals[weightVals.length - 1] - weightVals[0]).toFixed(1)} kg desde inicio</div>}</div>
             <div style={S.card}><div style={S.cardTitle}>Evolución cintura</div><Sparkline values={cinturaVals} color={C.warn} />{cinturaVals.length >= 2 && <div style={{ fontSize: 11, color: C.muted, marginTop: 6 }}>Δ {(cinturaVals[cinturaVals.length - 1] - cinturaVals[0]).toFixed(1)} cm desde inicio</div>}</div>
@@ -399,6 +661,10 @@ function PatientDetail({ patient, onUpdate, onBack }) {
         </div>
       )}
 
+      {!loading && tab === "membresía" && (
+        <MembresiaPaciente patient={localPatient} onUpdate={handleMembresiaSave} />
+      )}
+
       {!loading && tab === "sesiones" && (
         <div>
           {!addSession && <button style={{ ...S.btn("primary"), marginBottom: 16 }} onClick={() => setAddSession(true)}>+ Nueva sesión</button>}
@@ -406,27 +672,41 @@ function PatientDetail({ patient, onUpdate, onBack }) {
           {[...sesiones].reverse().map(s => (
             <div key={s.id} style={S.card}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-                <div><span style={{ fontWeight: 600, fontSize: 14 }}>Sesión #{s.num}</span><span style={{ color: C.muted, fontSize: 12, marginLeft: 10 }}>{s.fecha}</span>{s.inbody_realizado && <span style={{ ...S.badge(C.accent), marginLeft: 8 }}>InBody</span>}</div>
+                <div>
+                  <span style={{ fontWeight: 600, fontSize: 14 }}>Sesión #{s.num}</span>
+                  <span style={{ color: C.muted, fontSize: 12, marginLeft: 10 }}>{s.fecha}</span>
+                  {s.inbody_realizado && <span style={{ ...S.badge(C.accent), marginLeft: 8 }}>📊 InBody</span>}
+                </div>
                 <span style={S.badge(s.adherencia === "Muy buena" || s.adherencia === "Buena" ? C.ok : C.warn)}>Adherencia: {s.adherencia}</span>
               </div>
+              {/* Métricas básicas siempre */}
               <div style={S.grid(3)}>
                 {s.peso_kg && <div><span style={S.label}>Peso</span><span style={{ fontWeight: 600 }}>{s.peso_kg} kg</span></div>}
-                {s.cintura_cm && <div><span style={S.label}>Cintura</span><span style={{ fontWeight: 600 }}>{s.cintura_cm} cm</span></div>}
-                {s.cadera_cm && <div><span style={S.label}>Cadera</span><span style={{ fontWeight: 600 }}>{s.cadera_cm} cm</span></div>}
+                {s.dosis_mounjaro && <div><span style={S.label}>Dosis</span><span style={{ fontWeight: 600, color: C.accent }}>💉 {s.dosis_mounjaro}</span></div>}
               </div>
-              {s.inbody_realizado && s.inbody_grasa && (
-                <div style={{ ...S.grid(3), marginTop: 8 }}>
-                  <div><span style={S.label}>% Grasa</span><span style={{ fontWeight: 600 }}>{s.inbody_grasa}%</span></div>
-                  <div><span style={S.label}>Músculo</span><span style={{ fontWeight: 600 }}>{s.inbody_musculo} kg</span></div>
-                  <div><span style={S.label}>Agua</span><span style={{ fontWeight: 600 }}>{s.inbody_agua}%</span></div>
+              {/* InBody + mediciones antropométricas */}
+              {s.inbody_realizado && (
+                <div style={{ ...S.card, background: C.surface, marginTop: 10, padding: "12px 14px" }}>
+                  <div style={{ fontSize: 11, color: C.accent, fontWeight: 600, marginBottom: 8 }}>InBody + Mediciones</div>
+                  <div style={S.grid(4)}>
+                    {s.cintura_cm && <div><span style={S.label}>Cintura</span><span style={{ fontWeight: 600 }}>{s.cintura_cm} cm</span></div>}
+                    {s.cadera_cm && <div><span style={S.label}>Cadera</span><span style={{ fontWeight: 600 }}>{s.cadera_cm} cm</span></div>}
+                    {s.inbody_musculo && <div><span style={S.label}>MME</span><span style={{ fontWeight: 600 }}>{s.inbody_musculo} kg</span></div>}
+                    {s.inbody_grasa && <div><span style={S.label}>Masa Grasa</span><span style={{ fontWeight: 600 }}>{s.inbody_grasa} kg</span></div>}
+                    {s.inbody_grasa_visceral && <div><span style={S.label}>Grasa Visceral</span><span style={{ fontWeight: 600, color: s.inbody_grasa_visceral > 9 ? C.danger : s.inbody_grasa_visceral > 5 ? C.warn : C.ok }}>{s.inbody_grasa_visceral}</span></div>}
+                  </div>
                 </div>
               )}
-              <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-                {s.dosis_mounjaro && <span style={S.badge(C.accent)}>💉 {s.dosis_mounjaro}</span>}
-                {s.malestar_gi && <span style={S.tag(false)}>GI: {s.tipo_gi}</span>}
-                {s.evento_adverso && <span style={S.tag(false)}>⚠️ {s.tipo_ea}</span>}
-                {s.ajuste_dosis && <span style={S.badge(C.warn)}>💊 {s.nota_ajuste}</span>}
-              </div>
+              {/* Síntomas unificados */}
+              {(s.evento_adverso || s.malestar_gi) && (
+                <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+                  <span style={S.tag(false)}>⚠️ {s.tipo_ea || s.tipo_gi || "Síntomas reportados"}</span>
+                  {s.ajuste_dosis && <span style={S.badge(C.warn)}>💊 {s.nota_ajuste}</span>}
+                </div>
+              )}
+              {s.ajuste_dosis && !(s.evento_adverso || s.malestar_gi) && (
+                <div style={{ marginTop: 10 }}><span style={S.badge(C.warn)}>💊 {s.nota_ajuste}</span></div>
+              )}
               {s.notas && <div style={{ fontSize: 12, color: C.muted, marginTop: 8, fontStyle: "italic" }}>"{s.notas}"</div>}
             </div>
           ))}
@@ -457,10 +737,10 @@ function PatientDetail({ patient, onUpdate, onBack }) {
       {!loading && tab === "perfil" && (
         <div>
           {editProfile
-            ? <PatientForm patient={patient} onSave={(updated) => { onUpdate(updated); setEditProfile(false); }} onCancel={() => setEditProfile(false)} />
+            ? <PatientForm patient={localPatient} onSave={(updated) => { onUpdate(updated); setLocalPatient(updated); setEditProfile(false); }} onCancel={() => setEditProfile(false)} />
             : <div>
               <button style={{ ...S.btn("secondary"), marginBottom: 16 }} onClick={() => setEditProfile(true)}>✏️ Editar perfil</button>
-              {[["Diagnóstico", patient.diagnostico], ["Motivo de consulta", patient.motivo_consulta], ["Alergias", patient.alergias], ["Medicamentos", patient.medicamentos], ["Antecedentes heredofamiliares", patient.ant_heredofam], ["Antecedentes patológicos", patient.ant_patologicos], ["Sueño", patient.hab_sueno], ["Ejercicio", patient.hab_ejercicio], ["Alcohol", patient.hab_alcohol], ["Tabaco", patient.hab_tabaco]].map(([lbl, val]) => val ? (
+              {[["Diagnóstico", localPatient.diagnostico], ["Motivo de consulta", localPatient.motivo_consulta], ["Alergias", localPatient.alergias], ["Medicamentos", localPatient.medicamentos], ["Antecedentes heredofamiliares", localPatient.ant_heredofam], ["Antecedentes patológicos", localPatient.ant_patologicos], ["Sueño", localPatient.hab_sueno], ["Ejercicio", localPatient.hab_ejercicio], ["Alcohol", localPatient.hab_alcohol], ["Tabaco", localPatient.hab_tabaco]].map(([lbl, val]) => val ? (
                 <div key={lbl} style={{ ...S.card, padding: "12px 16px" }}><span style={{ ...S.label, display: "block", marginBottom: 4 }}>{lbl}</span><span style={{ fontSize: 13 }}>{val}</span></div>
               ) : null)}
             </div>}
@@ -473,7 +753,7 @@ function PatientDetail({ patient, onUpdate, onBack }) {
 // ── Patient List ──────────────────────────────────────────────────
 function PatientList({ patients, onSelect, onAdd }) {
   const [search, setSearch] = useState("");
-  const filtered = patients.filter(p => p.nombre?.toLowerCase().includes(search.toLowerCase()));
+  const filtered = patients.filter(p => p.nombre?.toLowerCase().includes(search.toLowerCase()) && p.nombre !== "test");
   return (
     <div>
       <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
@@ -490,6 +770,7 @@ function PatientList({ patients, onSelect, onAdd }) {
             </div>
             <div style={{ textAlign: "right", fontSize: 11, color: C.muted }}>
               <div>Ingreso: {p.fecha_ingreso}</div>
+              {p.plan && p.plan !== "sin_plan" && <div style={{ marginTop: 4 }}><span style={S.badge(PLAN_COLORS[p.plan])}>{PLAN_LABELS[p.plan]}</span></div>}
             </div>
           </div>
         </div>
@@ -500,23 +781,40 @@ function PatientList({ patients, onSelect, onAdd }) {
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────
-function Dashboard({ patients }) {
+function Dashboard({ patients, onGoToMembresias }) {
+  const real = patients.filter(p => p.nombre !== "test");
+  const conPlan = real.filter(p => p.plan && p.plan !== "sin_plan").length;
+  const alerta = real.filter(p => p.plan && p.plan !== "sin_plan" && Math.max(0, (p.apps_total || 0) - (p.apps_usadas || 0)) <= 1).length;
+
   return (
     <div>
-      <div style={S.grid(3)}>
-        {[["Pacientes activos", patients.length, C.accent], ["En tratamiento", patients.length, C.ok], ["Base de datos", "Supabase ✓", C.warn]].map(([lbl, val, color]) => (
+      <div style={S.grid(4)}>
+        {[
+          ["Pacientes activos", real.length, C.accent],
+          ["Con membresía", conPlan, C.ok],
+          ["Sin plan", real.length - conPlan, C.muted],
+          ["Apps por agotar", alerta, alerta > 0 ? C.warn : C.muted],
+        ].map(([lbl, val, color]) => (
           <div key={lbl} style={{ ...S.statBox, borderColor: color + "44" }}><div style={{ ...S.statVal, color }}>{val}</div><div style={S.statLabel}>{lbl}</div></div>
         ))}
       </div>
+      {alerta > 0 && (
+        <div style={{ ...S.card, marginTop: 16, borderColor: C.warn + "55", background: C.warn + "11", cursor: "pointer" }} onClick={onGoToMembresias}>
+          <div style={{ fontSize: 13, color: C.warn, fontWeight: 600 }}>⚠ {alerta} paciente{alerta > 1 ? "s" : ""} con pocas aplicaciones restantes → Ver membresías</div>
+        </div>
+      )}
       <div style={{ ...S.card, marginTop: 16 }}>
-        <div style={S.cardTitle}>Pacientes</div>
-        {patients.map(p => (
+        <div style={S.cardTitle}>Pacientes recientes</div>
+        {real.slice(0, 8).map(p => (
           <div key={p.id} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
             <div><div style={{ fontWeight: 500, fontSize: 13 }}>{p.nombre}</div><div style={{ fontSize: 11, color: C.muted }}>{p.diagnostico?.split(",")[0]}</div></div>
-            <div style={{ fontSize: 11, color: C.muted }}>Ingreso: {p.fecha_ingreso}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {p.plan && p.plan !== "sin_plan" && <span style={S.badge(PLAN_COLORS[p.plan])}>{PLAN_LABELS[p.plan]}</span>}
+              <span style={{ fontSize: 11, color: C.muted }}>Ingreso: {p.fecha_ingreso}</span>
+            </div>
           </div>
         ))}
-        {patients.length === 0 && <div style={{ color: C.muted, fontSize: 13 }}>Aún no hay pacientes registrados.</div>}
+        {real.length === 0 && <div style={{ color: C.muted, fontSize: 13 }}>Aún no hay pacientes registrados.</div>}
       </div>
     </div>
   );
@@ -567,8 +865,22 @@ export default function App() {
 
   if (!auth) return <Login onLogin={() => setAuth(true)} />;
 
-  const navItems = [["dashboard", "📊", "Dashboard"], ["patients", "👥", "Pacientes"]];
-  const pageTitle = addingPatient ? "Nuevo Paciente" : selected ? selected.nombre : view === "dashboard" ? "Dashboard" : "Pacientes";
+  const navItems = [
+    ["dashboard", "📊", "Dashboard"],
+    ["patients", "👥", "Pacientes"],
+    ["membresias", "💳", "Membresías"],
+  ];
+
+  const pageTitle = addingPatient ? "Nuevo Paciente"
+    : selected ? selected.nombre
+    : view === "dashboard" ? "Dashboard"
+    : view === "membresias" ? "Membresías"
+    : "Pacientes";
+
+  const handleSelectFromMembresias = (p) => {
+    setSelected(p);
+    setView("patients");
+  };
 
   return (
     <div style={S.app}>
@@ -580,7 +892,7 @@ export default function App() {
           </div>
         ))}
         <div style={{ marginTop: "auto", padding: "0 20px" }}>
-          <div style={{ fontSize: 11, color: C.muted }}>v2.0 · Supabase</div>
+          <div style={{ fontSize: 11, color: C.muted }}>v2.1 · Supabase</div>
           <button style={{ ...S.btn("secondary"), width: "100%", marginTop: 8, fontSize: 12 }} onClick={() => setAuth(false)}>Cerrar sesión</button>
         </div>
       </div>
@@ -591,12 +903,27 @@ export default function App() {
         </div>
         <div style={S.content}>
           {loadingPatients && <div style={{ color: C.muted, padding: 20 }}>Cargando pacientes...</div>}
-          {!loadingPatients && view === "dashboard" && !selected && <Dashboard patients={patients} />}
+          {!loadingPatients && view === "dashboard" && !selected && (
+            <Dashboard patients={patients} onGoToMembresias={() => setView("membresias")} />
+          )}
           {!loadingPatients && view === "patients" && !selected && !addingPatient && (
             <PatientList patients={patients} onSelect={setSelected} onAdd={() => setAddingPatient(true)} />
           )}
+          {!loadingPatients && view === "membresias" && !selected && (
+            <MembresiasView
+              patients={patients}
+              onSelectPatient={handleSelectFromMembresias}
+              onUpdate={(updated) => setPatients(prev => prev.map(p => p.id === updated.id ? updated : p))}
+            />
+          )}
           {addingPatient && <PatientForm onSave={(p) => { setPatients(prev => [p, ...prev]); setSelected(p); setAddingPatient(false); setView("patients"); }} onCancel={() => setAddingPatient(false)} />}
-          {selected && <PatientDetail patient={selected} onUpdate={(updated) => { setPatients(prev => prev.map(p => p.id === updated.id ? updated : p)); setSelected(updated); }} onBack={() => setSelected(null)} />}
+          {selected && (
+            <PatientDetail
+              patient={selected}
+              onUpdate={(updated) => { setPatients(prev => prev.map(p => p.id === updated.id ? updated : p)); setSelected(updated); }}
+              onBack={() => { setSelected(null); }}
+            />
+          )}
         </div>
       </div>
     </div>
