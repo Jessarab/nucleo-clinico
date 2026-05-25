@@ -101,15 +101,15 @@ function labStatus(key, val) {
 }
 
 // ── MEMBRESÍA CONSTANTS ───────────────────────────────────────────
-const PLAN_LABELS = { sin_plan: "Sin plan", esencial: "Esencial", avanzado: "Avanzado", integral: "Integral" };
-const PLAN_COLORS = { sin_plan: C.muted, esencial: C.ok, avanzado: C.warn, integral: C.purple };
+const PLAN_LABELS = { sin_plan: "Sin membresía", plus: "Plus" };
+const PLAN_COLORS = { sin_plan: C.muted, plus: C.purple };
 
 // ── MEMBRESÍA TAB (dentro de paciente) ───────────────────────────
 function MembresiaPaciente({ patient, onUpdate }) {
+  const PLUS_TOTAL = 4; // Plan Plus siempre incluye 4 aplicaciones
   const [vals, setVals] = useState({
     plan: patient.plan || "sin_plan",
     dosis_actual: patient.dosis_actual || "2.5",
-    apps_total: patient.apps_total || 0,
     apps_usadas: patient.apps_usadas || 0,
     fecha_inicio_plan: patient.fecha_inicio_plan || "",
     notas_membresia: patient.notas_membresia || "",
@@ -118,9 +118,10 @@ function MembresiaPaciente({ patient, onUpdate }) {
   const [saved, setSaved] = useState(false);
   const set = (k, v) => setVals(p => ({ ...p, [k]: v }));
 
-  const restantes = Math.max(0, (vals.apps_total || 0) - (vals.apps_usadas || 0));
-  const pct = vals.apps_total > 0 ? Math.round((vals.apps_usadas / vals.apps_total) * 100) : 0;
-  const planColor = PLAN_COLORS[vals.plan] || C.muted;
+  const isPlus = vals.plan === "plus";
+  const restantes = isPlus ? Math.max(0, PLUS_TOTAL - (vals.apps_usadas || 0)) : 0;
+  const pct = isPlus ? Math.round(((vals.apps_usadas || 0) / PLUS_TOTAL) * 100) : 0;
+  const alertColor = restantes === 0 ? C.danger : restantes === 1 ? C.warn : C.purple;
 
   const handleSave = async () => {
     setSaving(true);
@@ -128,8 +129,8 @@ function MembresiaPaciente({ patient, onUpdate }) {
       const payload = {
         plan: vals.plan,
         dosis_actual: vals.dosis_actual,
-        apps_total: vals.plan === "sin_plan" ? 0 : parseInt(vals.apps_total) || 0,
-        apps_usadas: vals.plan === "sin_plan" ? 0 : parseInt(vals.apps_usadas) || 0,
+        apps_total: isPlus ? PLUS_TOTAL : 0,
+        apps_usadas: isPlus ? Math.min(parseInt(vals.apps_usadas) || 0, PLUS_TOTAL) : 0,
         fecha_inicio_plan: vals.fecha_inicio_plan || null,
         notas_membresia: vals.notas_membresia || null,
       };
@@ -144,28 +145,32 @@ function MembresiaPaciente({ patient, onUpdate }) {
   return (
     <div>
       {/* Status card */}
-      <div style={{ ...S.card, borderColor: planColor + "55", background: planColor + "11", marginBottom: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+      <div style={{ ...S.card, borderColor: (isPlus ? alertColor : C.muted) + "55", background: (isPlus ? alertColor : C.muted) + "11", marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
           <div>
             <div style={{ fontSize: 11, color: C.muted, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>Plan actual</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: planColor }}>{PLAN_LABELS[vals.plan]}</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: isPlus ? C.purple : C.muted }}>{PLAN_LABELS[vals.plan]}</div>
             {vals.fecha_inicio_plan && <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>Desde {vals.fecha_inicio_plan}</div>}
           </div>
-          {vals.plan !== "sin_plan" && (
+          {isPlus && (
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 11, color: C.muted, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>Aplicaciones</div>
-              <div style={{ display: "flex", gap: 4, justifyContent: "flex-end", marginBottom: 6 }}>
-                {Array.from({ length: vals.apps_total || 0 }, (_, i) => (
-                  <div key={i} style={{ width: 12, height: 12, borderRadius: "50%", background: i < (vals.apps_usadas || 0) ? C.border : planColor }} />
+              <div style={{ fontSize: 11, color: C.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Aplicaciones del plan</div>
+              <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", marginBottom: 8 }}>
+                {Array.from({ length: PLUS_TOTAL }, (_, i) => (
+                  <div key={i} style={{ width: 16, height: 16, borderRadius: "50%", background: i < (vals.apps_usadas || 0) ? C.border : alertColor, transition: "background 0.2s" }} />
                 ))}
               </div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: restantes === 0 ? C.danger : restantes <= 1 ? C.warn : planColor }}>
-                {restantes} de {vals.apps_total} restantes
+              <div style={{ fontSize: 15, fontWeight: 700, color: alertColor }}>
+                {restantes === 0 ? "⚠ Plan agotado" : `${restantes} de ${PLUS_TOTAL} restantes`}
               </div>
-              {/* progress bar */}
-              <div style={{ width: 140, height: 4, background: C.border, borderRadius: 2, marginTop: 6, overflow: "hidden" }}>
-                <div style={{ width: `${pct}%`, height: "100%", background: restantes === 0 ? C.danger : restantes <= 1 ? C.warn : planColor, borderRadius: 2, transition: "width 0.3s" }} />
+              <div style={{ width: 160, height: 5, background: C.border, borderRadius: 3, marginTop: 8, overflow: "hidden" }}>
+                <div style={{ width: `${pct}%`, height: "100%", background: alertColor, borderRadius: 3, transition: "width 0.3s" }} />
               </div>
+              {restantes <= 1 && (
+                <div style={{ fontSize: 11, color: alertColor, marginTop: 8, fontWeight: 600 }}>
+                  {restantes === 0 ? "Contactar para renovar plan" : "Última aplicación — avisar al paciente"}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -176,8 +181,12 @@ function MembresiaPaciente({ patient, onUpdate }) {
         <div style={S.cardTitle}>Editar membresía</div>
         <div style={{ ...S.grid(2), marginBottom: 14 }}>
           <Field label="Plan">
-            <select style={S.select} value={vals.plan} onChange={e => set("plan", e.target.value)}>
-              {Object.entries(PLAN_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            <select style={S.select} value={vals.plan} onChange={e => {
+              set("plan", e.target.value);
+              if (e.target.value === "sin_plan") set("apps_usadas", 0);
+            }}>
+              <option value="sin_plan">Sin membresía</option>
+              <option value="plus">Plus</option>
             </select>
           </Field>
           <Field label="Dosis actual (mg)">
@@ -186,16 +195,20 @@ function MembresiaPaciente({ patient, onUpdate }) {
             </select>
           </Field>
         </div>
-        {vals.plan !== "sin_plan" && (
-          <div style={{ ...S.grid(3), marginBottom: 14 }}>
-            <Field label="Apps incluidas en el plan">
-              <input style={S.input} type="number" min="0" max="20" value={vals.apps_total} onChange={e => set("apps_total", e.target.value)} />
-            </Field>
-            <Field label="Apps ya aplicadas">
-              <input style={S.input} type="number" min="0" max="20" value={vals.apps_usadas} onChange={e => set("apps_usadas", e.target.value)} />
-            </Field>
-            <Field label="Fecha inicio de plan">
+        {isPlus && (
+          <div style={{ ...S.grid(2), marginBottom: 14 }}>
+            <Field label="Fecha de inicio del plan">
               <input style={S.input} type="date" value={vals.fecha_inicio_plan} onChange={e => set("fecha_inicio_plan", e.target.value)} />
+            </Field>
+            <Field label={`Aplicaciones ya usadas (de ${PLUS_TOTAL})`}>
+              <div style={{ display: "flex", gap: 6 }}>
+                {Array.from({ length: PLUS_TOTAL + 1 }, (_, i) => (
+                  <button key={i} onClick={() => set("apps_usadas", i)} style={{ flex: 1, padding: "8px 0", borderRadius: 6, border: `1px solid ${vals.apps_usadas === i ? C.purple : C.border}`, background: vals.apps_usadas === i ? C.purpleDim : "transparent", color: vals.apps_usadas === i ? C.purple : C.muted, fontWeight: vals.apps_usadas === i ? 700 : 400, cursor: "pointer", fontSize: 14 }}>
+                    {i}
+                  </button>
+                ))}
+              </div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>Úsalo para corregir el conteo si ya había sesiones previas</div>
             </Field>
           </div>
         )}
@@ -412,11 +425,14 @@ function LabForm({ pacienteId, onSave, onCancel }) {
 
 // ── Session Form ──────────────────────────────────────────────────
 // InBody en sesiones impares (1, 3, 5...) — desde la primera
-function SessionForm({ pacienteId, num, onSave, onCancel }) {
+function SessionForm({ pacienteId, num, onSave, onCancel, patient, onUpdatePatient }) {
   const isInBody = num % 2 !== 0;
   const [vals, setVals] = useState({ fecha: new Date().toISOString().split("T")[0], num, inbody_realizado: isInBody, evento_adverso: false, malestar_gi: false, ajuste_dosis: false, adherencia: "Buena", dosis_mounjaro: "2.5mg" });
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setVals((p) => ({ ...p, [k]: v }));
+
+  const isPlus = patient?.plan === "plus";
+  const appsRestantes = isPlus ? Math.max(0, (patient?.apps_total || 4) - (patient?.apps_usadas || 0)) : null;
 
   const handleSave = async () => {
     setSaving(true);
@@ -426,9 +442,16 @@ function SessionForm({ pacienteId, num, onSave, onCancel }) {
         if (payload[k] !== undefined && payload[k] !== "") payload[k] = parseFloat(payload[k]) || null;
         else payload[k] = null;
       });
-      // agua ya no se usa, forzar null
       payload.inbody_agua = null;
       const result = await db.createSesion(payload);
+
+      // Auto-descontar app si está en plan Plus y le quedan apps
+      if (isPlus && appsRestantes > 0) {
+        const nuevasUsadas = Math.min((patient.apps_usadas || 0) + 1, patient.apps_total || 4);
+        await db.updatePaciente(pacienteId, { apps_usadas: nuevasUsadas });
+        onUpdatePatient && onUpdatePatient({ ...patient, apps_usadas: nuevasUsadas });
+      }
+
       onSave(result[0]);
     } catch (e) { alert("Error al guardar: " + e.message); }
     setSaving(false);
@@ -441,6 +464,15 @@ function SessionForm({ pacienteId, num, onSave, onCancel }) {
         {isInBody && <span style={S.badge(C.accent)}>📊 InBody + mediciones</span>}
         {!isInBody && <span style={{ fontSize: 12, color: C.muted }}>Solo seguimiento</span>}
       </div>
+
+      {/* Aviso plan Plus */}
+      {isPlus && (
+        <div style={{ ...S.card, background: appsRestantes === 0 ? C.danger + "18" : appsRestantes === 1 ? C.warn + "18" : C.purple + "11", borderColor: appsRestantes === 0 ? C.danger + "66" : appsRestantes === 1 ? C.warn + "66" : C.purple + "44", marginBottom: 14, padding: "10px 14px" }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: appsRestantes === 0 ? C.danger : appsRestantes === 1 ? C.warn : C.purple }}>
+            {appsRestantes === 0 ? "⚠ Plan agotado — esta sesión no descuenta del plan" : appsRestantes === 1 ? `⚠ Última aplicación del plan Plus — avisar al paciente` : `💳 Plan Plus · ${appsRestantes} aplicaciones restantes → al guardar quedará ${appsRestantes - 1}`}
+          </div>
+        </div>
+      )}
 
       {/* Siempre visible */}
       <div style={{ ...S.grid(3), marginBottom: 14 }}>
@@ -668,7 +700,7 @@ function PatientDetail({ patient, onUpdate, onBack }) {
       {!loading && tab === "sesiones" && (
         <div>
           {!addSession && <button style={{ ...S.btn("primary"), marginBottom: 16 }} onClick={() => setAddSession(true)}>+ Nueva sesión</button>}
-          {addSession && <SessionForm pacienteId={patient.id} num={sesiones.length + 1} onSave={(s) => { setSesiones(prev => [...prev, s]); setAddSession(false); }} onCancel={() => setAddSession(false)} />}
+          {addSession && <SessionForm pacienteId={patient.id} num={sesiones.length + 1} patient={localPatient} onUpdatePatient={(updated) => { setLocalPatient(updated); onUpdate(updated); }} onSave={(s) => { setSesiones(prev => [...prev, s]); setAddSession(false); }} onCancel={() => setAddSession(false)} />}
           {[...sesiones].reverse().map(s => (
             <div key={s.id} style={S.card}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
