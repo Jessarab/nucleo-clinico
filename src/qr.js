@@ -5,13 +5,13 @@ export function parseQr(input) {
   if (/^https?:/i.test(value)) {
     const url = new URL(value);
     if (url.origin !== window.location.origin || url.pathname !== '/') throw new Error('Este enlace pertenece a otra versión de Núcleo. Abre la tarjeta en esta versión o pega su código.');
-    value = new URLSearchParams(url.hash.slice(1)).get('membresia') || '';
+    value = url.searchParams.get('membresia') || new URLSearchParams(url.hash.slice(1)).get('membresia') || '';
   } else value = value.replace(/^nucleo:/i, '');
   if (!uuid.test(value)) throw new Error('El QR no contiene un código de membresía válido.');
   return value.toLowerCase();
 }
 export function cardUrl(token) {
-  return `${window.location.origin}/#membresia=${parseQr(token)}`;
+  return `${window.location.origin}/?membresia=${parseQr(token)}`;
 }
 export async function resolveQr(input) {
   const token = parseQr(input);

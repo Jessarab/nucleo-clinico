@@ -6,7 +6,8 @@ test('new links and legacy codes resolve to the same identifier',()=>{
  expect(parseQr(cardUrl(token))).toBe(token);
  expect(parseQr('nucleo:'+token)).toBe(token);
  expect(parseQr(token)).toBe(token);
- expect(cardUrl(token)).toBe(window.location.origin+'/#membresia='+token);
+ expect(parseQr(window.location.origin+'/#membresia='+token)).toBe(token);
+ expect(cardUrl(token)).toBe(window.location.origin+'/?membresia='+token);
 });
 test('foreign links and invalid payloads cannot navigate or query records',async()=>{
  expect(()=>parseQr('https://example.org/#membresia='+token)).toThrow();

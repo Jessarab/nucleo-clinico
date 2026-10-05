@@ -779,7 +779,7 @@ function Login({ onLogin }) {
 // ── App Root ──────────────────────────────────────────────────────
 export default function App() {
   const [auth, setAuth] = useState(false);
-  const [qrHash, setQrHash] = useState(window.location.hash);
+  const [qrHash, setQrHash] = useState(window.location.search + window.location.hash);
   const [qrError, setQrError] = useState("");
   const [detailTab, setDetailTab] = useState("resumen");
   const [loadError, setLoadError] = useState("");
@@ -815,18 +815,23 @@ export default function App() {
   }, [auth]);
 
   useEffect(() => {
-    const update = () => setQrHash(window.location.hash);
+    const update = () => setQrHash(window.location.search + window.location.hash);
     window.addEventListener('hashchange', update);
-    return () => window.removeEventListener('hashchange', update);
+    window.addEventListener('popstate', update);
+    return () => { window.removeEventListener('hashchange', update); window.removeEventListener('popstate', update); };
   }, []);
   useEffect(() => {
-    if (!auth || !qrHash.startsWith('#membresia=')) return;
+    const target = new URL(window.location.origin + '/' + qrHash);
+    if (!auth || !(target.searchParams.has('membresia') || new URLSearchParams(target.hash.slice(1)).has('membresia'))) return;
     let active = true;
     setQrError('');
     resolveQr(window.location.origin + '/' + qrHash).then(patient => {
       if (!active) return;
       setDetailTab('membresía'); setSelected(patient); setAddingPatient(false); setView('patients');
-      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      const clean = new URL(window.location.href);
+      clean.searchParams.delete('membresia');
+      if (new URLSearchParams(clean.hash.slice(1)).has('membresia')) clean.hash = '';
+      window.history.replaceState(null, '', clean.pathname + clean.search + clean.hash);
       setQrHash('');
     }).catch(e => { if (active) setQrError(e.message); });
     return () => { active = false; };
