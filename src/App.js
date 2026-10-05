@@ -1,16 +1,17 @@
 import { useState, useEffect, useRef } from "react";
 
 // ── SUPABASE CONFIG ───────────────────────────────────────────────
-const SUPABASE_URL = "https://ytymbqdjhcjdpdinrvqx.supabase.co";
-const SUPABASE_KEY = "sb_publishable_MY732PI-wkXk3SJ_FIFInA_chi4X3iU";
+import { supabase, SUPABASE_URL, SUPABASE_KEY } from "./authClient";
 
 async function sb(method, table, body, query = "") {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Inicia sesión para continuar.");
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}${query}`, {
     method,
     headers: {
       "Content-Type": "application/json",
       "apikey": SUPABASE_KEY,
-      "Authorization": `Bearer ${SUPABASE_KEY}`,
+      "Authorization": `Bearer ${session.access_token}`,
       "Prefer": "return=representation",
     },
     body: body ? JSON.stringify(body) : undefined,
@@ -854,27 +855,50 @@ function Dashboard({ patients, onGoToMembresias }) {
 
 // ── Login ─────────────────────────────────────────────────────────
 function Login({ onLogin }) {
+  const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
-  const [err, setErr] = useState(false);
-  const handle = () => { if (pw === "Pxnss1711") onLogin(); else { setErr(true); setTimeout(() => setErr(false), 1500); } };
-  return (
-    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ width: 320, ...S.card, padding: 32 }}>
-        <div style={{ fontSize: 24, fontWeight: 700, color: C.accent, marginBottom: 4 }}>Núcleo</div>
-        <div style={{ fontSize: 12, color: C.muted, marginBottom: 28, letterSpacing: 1, textTransform: "uppercase" }}>Sistema Clínico</div>
-        <Field label="Contraseña">
-          <input style={{ ...S.input, borderColor: err ? C.danger : C.border }} type="password" value={pw} onChange={(e) => setPw(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handle()} placeholder="••••••••" />
-        </Field>
-        {err && <div style={{ fontSize: 11, color: C.danger, marginTop: 6 }}>Contraseña incorrecta</div>}
-        <button style={{ ...S.btn("primary"), width: "100%", marginTop: 16, padding: "10px" }} onClick={handle}>Entrar →</button>
-      </div>
-    </div>
-  );
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const handle = async (event) => {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true); setError("");
+    try {
+      const { error: loginError } = await supabase.auth.signInWithPassword({ email: email.trim(), password: pw });
+      if (loginError) throw new Error("No se pudo iniciar sesión. Revisa tu correo y contraseña.");
+      const { data, error: accessError } = await supabase.rpc("es_admin_clinico");
+      if (accessError || data !== true) {
+        await supabase.auth.signOut({ scope: "local" });
+        throw new Error("Tu cuenta no tiene acceso autorizado o el acceso aún no está configurado.");
+      }
+      setPw(""); onLogin();
+    } catch (e) { setError(e.message); }
+    finally { setBusy(false); }
+  };
+  return <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <form onSubmit={handle} style={{ ...S.card, width: 340 }}>
+      <h1 style={{ color: C.accent }}>Núcleo</h1>
+      <p>Acceso del personal</p>
+      <Field label="Correo"><input required type="email" autoComplete="username" style={S.input} value={email} onChange={e => setEmail(e.target.value)} /></Field>
+      <Field label="Contraseña"><input required type="password" autoComplete="current-password" style={S.input} value={pw} onChange={e => setPw(e.target.value)} /></Field>
+      {error && <p role="alert" style={{ color: C.danger }}>{error}</p>}
+      <button style={{ ...S.btn(), marginTop: 16 }} disabled={busy}>{busy ? "Verificando…" : "Entrar"}</button>
+    </form>
+  </div>;
 }
 
 // ── App Root ──────────────────────────────────────────────────────
 export default function App() {
   const [auth, setAuth] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        setAuth(false); setPatients([]); setSelected(null); setAddingPatient(false);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
   const [view, setView] = useState("dashboard");
   const [patients, setPatients] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -891,7 +915,10 @@ export default function App() {
   useEffect(() => {
     if (auth) {
       setLoadingPatients(true);
-      db.getPacientes().then(setPatients).finally(() => setLoadingPatients(false));
+      let active = true;
+      setLoadError("");
+      db.getPacientes().then(p => { if (active) setPatients(p); }).catch(() => { if (active) setLoadError("No se pudieron cargar los pacientes. Verifica tu conexión y acceso."); }).finally(() => { if (active) setLoadingPatients(false); });
+      return () => { active = false; };
     }
   }, [auth]);
 
@@ -925,7 +952,7 @@ export default function App() {
         ))}
         <div style={{ marginTop: "auto", padding: "0 20px" }}>
           <div style={{ fontSize: 11, color: C.muted }}>v2.1 · Supabase</div>
-          <button style={{ ...S.btn("secondary"), width: "100%", marginTop: 8, fontSize: 12 }} onClick={() => setAuth(false)}>Cerrar sesión</button>
+          <button style={{ ...S.btn("secondary"), width: "100%", marginTop: 8, fontSize: 12 }} onClick={async () => { setAuth(false); setPatients([]); setSelected(null); setAddingPatient(false); await supabase.auth.signOut({ scope: "local" }); }}>Cerrar sesión</button>
         </div>
       </div>
       <div style={S.main}>
@@ -934,6 +961,7 @@ export default function App() {
           <div style={{ fontSize: 12, color: C.muted }}>{new Date().toLocaleDateString("es-MX", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</div>
         </div>
         <div style={S.content}>
+          {loadError && <p role="alert" style={{ color: C.danger }}>{loadError}</p>}
           {loadingPatients && <div style={{ color: C.muted, padding: 20 }}>Cargando pacientes...</div>}
           {!loadingPatients && view === "dashboard" && !selected && (
             <Dashboard patients={patients} onGoToMembresias={() => setView("membresias")} />
