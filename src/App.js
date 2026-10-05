@@ -1,3 +1,4 @@
+import Membership, { MembershipLookup, currentPackage, membershipAction } from "./Membership";
 import { useState, useEffect, useRef } from "react";
 
 // ── SUPABASE CONFIG ───────────────────────────────────────────────
@@ -106,124 +107,6 @@ const PLAN_LABELS = { sin_plan: "Sin membresía", plus: "Plus" };
 const PLAN_COLORS = { sin_plan: C.muted, plus: C.purple };
 
 // ── MEMBRESÍA TAB (dentro de paciente) ───────────────────────────
-function MembresiaPaciente({ patient, onUpdate }) {
-  const PLUS_TOTAL = 4; // Plan Plus siempre incluye 4 aplicaciones
-  const [vals, setVals] = useState({
-    plan: patient.plan || "sin_plan",
-    dosis_actual: patient.dosis_actual || "2.5",
-    apps_usadas: patient.apps_usadas || 0,
-    fecha_inicio_plan: patient.fecha_inicio_plan || "",
-    notas_membresia: patient.notas_membresia || "",
-  });
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const set = (k, v) => setVals(p => ({ ...p, [k]: v }));
-
-  const isPlus = vals.plan === "plus";
-  const restantes = isPlus ? Math.max(0, PLUS_TOTAL - (vals.apps_usadas || 0)) : 0;
-  const pct = isPlus ? Math.round(((vals.apps_usadas || 0) / PLUS_TOTAL) * 100) : 0;
-  const alertColor = restantes === 0 ? C.danger : restantes === 1 ? C.warn : C.purple;
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const payload = {
-        plan: vals.plan,
-        dosis_actual: vals.dosis_actual,
-        apps_total: isPlus ? PLUS_TOTAL : 0,
-        apps_usadas: isPlus ? Math.min(parseInt(vals.apps_usadas) || 0, PLUS_TOTAL) : 0,
-        fecha_inicio_plan: vals.fecha_inicio_plan || null,
-        notas_membresia: vals.notas_membresia || null,
-      };
-      await db.updatePaciente(patient.id, payload);
-      onUpdate({ ...patient, ...payload });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } catch (e) { alert("Error: " + e.message); }
-    setSaving(false);
-  };
-
-  return (
-    <div>
-      {/* Status card */}
-      <div style={{ ...S.card, borderColor: (isPlus ? alertColor : C.muted) + "55", background: (isPlus ? alertColor : C.muted) + "11", marginBottom: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
-          <div>
-            <div style={{ fontSize: 11, color: C.muted, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>Plan actual</div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: isPlus ? C.purple : C.muted }}>{PLAN_LABELS[vals.plan]}</div>
-            {vals.fecha_inicio_plan && <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>Desde {vals.fecha_inicio_plan}</div>}
-          </div>
-          {isPlus && (
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 11, color: C.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Aplicaciones del plan</div>
-              <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", marginBottom: 8 }}>
-                {Array.from({ length: PLUS_TOTAL }, (_, i) => (
-                  <div key={i} style={{ width: 16, height: 16, borderRadius: "50%", background: i < (vals.apps_usadas || 0) ? C.border : alertColor, transition: "background 0.2s" }} />
-                ))}
-              </div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: alertColor }}>
-                {restantes === 0 ? "⚠ Plan agotado" : `${restantes} de ${PLUS_TOTAL} restantes`}
-              </div>
-              <div style={{ width: 160, height: 5, background: C.border, borderRadius: 3, marginTop: 8, overflow: "hidden" }}>
-                <div style={{ width: `${pct}%`, height: "100%", background: alertColor, borderRadius: 3, transition: "width 0.3s" }} />
-              </div>
-              {restantes <= 1 && (
-                <div style={{ fontSize: 11, color: alertColor, marginTop: 8, fontWeight: 600 }}>
-                  {restantes === 0 ? "Contactar para renovar plan" : "Última aplicación — avisar al paciente"}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Form */}
-      <div style={S.card}>
-        <div style={S.cardTitle}>Editar membresía</div>
-        <div style={{ ...S.grid(2), marginBottom: 14 }}>
-          <Field label="Plan">
-            <select style={S.select} value={vals.plan} onChange={e => {
-              set("plan", e.target.value);
-              if (e.target.value === "sin_plan") set("apps_usadas", 0);
-            }}>
-              <option value="sin_plan">Sin membresía</option>
-              <option value="plus">Plus</option>
-            </select>
-          </Field>
-          <Field label="Dosis actual (mg)">
-            <select style={S.select} value={vals.dosis_actual} onChange={e => set("dosis_actual", e.target.value)}>
-              {["2.5", "5", "7.5", "10"].map(d => <option key={d} value={d}>{d} mg</option>)}
-            </select>
-          </Field>
-        </div>
-        {isPlus && (
-          <div style={{ ...S.grid(2), marginBottom: 14 }}>
-            <Field label="Fecha de inicio del plan">
-              <input style={S.input} type="date" value={vals.fecha_inicio_plan} onChange={e => set("fecha_inicio_plan", e.target.value)} />
-            </Field>
-            <Field label={`Aplicaciones ya usadas (de ${PLUS_TOTAL})`}>
-              <div style={{ display: "flex", gap: 6 }}>
-                {Array.from({ length: PLUS_TOTAL + 1 }, (_, i) => (
-                  <button key={i} onClick={() => set("apps_usadas", i)} style={{ flex: 1, padding: "8px 0", borderRadius: 6, border: `1px solid ${vals.apps_usadas === i ? C.purple : C.border}`, background: vals.apps_usadas === i ? C.purpleDim : "transparent", color: vals.apps_usadas === i ? C.purple : C.muted, fontWeight: vals.apps_usadas === i ? 700 : 400, cursor: "pointer", fontSize: 14 }}>
-                    {i}
-                  </button>
-                ))}
-              </div>
-              <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>Úsalo para corregir el conteo si ya había sesiones previas</div>
-            </Field>
-          </div>
-        )}
-        <Field label="Notas">
-          <textarea style={{ ...S.textarea, marginBottom: 14 }} value={vals.notas_membresia} onChange={e => set("notas_membresia", e.target.value)} placeholder="Observaciones sobre el plan..." />
-        </Field>
-        <button style={{ ...S.btn("primary"), background: saved ? C.ok : C.accent }} onClick={handleSave} disabled={saving}>
-          {saving ? "Guardando..." : saved ? "✓ Guardado" : "Guardar cambios"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // ── VISTA GLOBAL DE MEMBRESÍAS ────────────────────────────────────
 function MembresiasView({ patients, onSelectPatient, onUpdate }) {
   const [filter, setFilter] = useState("todos");
@@ -427,6 +310,8 @@ function LabForm({ pacienteId, onSave, onCancel }) {
 // ── Session Form ──────────────────────────────────────────────────
 // InBody en sesiones impares (1, 3, 5...) — desde la primera
 function SessionForm({ pacienteId, num, onSave, onCancel, patient, onUpdatePatient }) {
+  const pendingRequest = useRef(null);
+  const savingLock = useRef(false);
   const isInBody = num % 2 !== 0;
   const [vals, setVals] = useState({ fecha: new Date().toISOString().split("T")[0], num, inbody_realizado: isInBody, evento_adverso: false, malestar_gi: false, ajuste_dosis: false, adherencia: "Buena", dosis_mounjaro: "2.5mg" });
   const [saving, setSaving] = useState(false);
@@ -436,6 +321,8 @@ function SessionForm({ pacienteId, num, onSave, onCancel, patient, onUpdatePatie
   const appsRestantes = isPlus ? Math.max(0, (patient?.apps_total || 4) - (patient?.apps_usadas || 0)) : null;
 
   const handleSave = async () => {
+    if (savingLock.current) return;
+    savingLock.current = true;
     setSaving(true);
     try {
       const payload = { paciente_id: pacienteId, ...vals };
@@ -444,17 +331,17 @@ function SessionForm({ pacienteId, num, onSave, onCancel, patient, onUpdatePatie
         else payload[k] = null;
       });
       payload.inbody_agua = null;
-      const result = await db.createSesion(payload);
-
-      // Auto-descontar app si está en plan Plus y le quedan apps
-      if (isPlus && appsRestantes > 0) {
-        const nuevasUsadas = Math.min((patient.apps_usadas || 0) + 1, patient.apps_total || 4);
-        await db.updatePaciente(pacienteId, { apps_usadas: nuevasUsadas });
-        onUpdatePatient && onUpdatePatient({ ...patient, apps_usadas: nuevasUsadas });
+      if (!pendingRequest.current) {
+        const pack = await currentPackage(pacienteId);
+        pendingRequest.current = { id: crypto.randomUUID(), packId: pack?.id || null, payload };
       }
-
-      onSave(result[0]);
-    } catch (e) { alert("Error al guardar: " + e.message); }
+      const pending = pendingRequest.current;
+      const result = await membershipAction(pacienteId, 'sesion', pending.packId, pending.id, pending.payload);
+      pendingRequest.current = null;
+      onUpdatePatient && onUpdatePatient(result.paciente);
+      onSave(result.sesion);
+    } catch (e) { if (e.code) pendingRequest.current = null; alert("Error al guardar: " + e.message + ". Si fue un problema de conexión, reintenta sin cambiar los datos."); }
+    savingLock.current = false;
     setSaving(false);
   };
 
@@ -470,7 +357,7 @@ function SessionForm({ pacienteId, num, onSave, onCancel, patient, onUpdatePatie
       {isPlus && (
         <div style={{ ...S.card, background: appsRestantes === 0 ? C.danger + "18" : appsRestantes === 1 ? C.warn + "18" : C.purple + "11", borderColor: appsRestantes === 0 ? C.danger + "66" : appsRestantes === 1 ? C.warn + "66" : C.purple + "44", marginBottom: 14, padding: "10px 14px" }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: appsRestantes === 0 ? C.danger : appsRestantes === 1 ? C.warn : C.purple }}>
-            {appsRestantes === 0 ? "⚠ Plan agotado — esta sesión no descuenta del plan" : appsRestantes === 1 ? `⚠ Última aplicación del plan Plus — avisar al paciente` : `💳 Plan Plus · ${appsRestantes} aplicaciones restantes → al guardar quedará ${appsRestantes - 1}`}
+            {appsRestantes === 0 ? "⚠ Plan agotado — renueva antes de registrar otra aplicación" : appsRestantes === 1 ? `⚠ Última aplicación del plan Plus — avisar al paciente` : `💳 Plan Plus · ${appsRestantes} aplicaciones restantes → al guardar quedará ${appsRestantes - 1}`}
           </div>
         </div>
       )}
@@ -555,6 +442,7 @@ function PatientForm({ patient, onSave, onCancel }) {
       const payload = { ...vals };
       if (payload.edad) payload.edad = parseInt(payload.edad);
       delete payload.sesiones; delete payload.laboratorios;
+      ["plan", "apps_total", "apps_usadas", "fecha_inicio_plan", "id", "created_at"].forEach(k => delete payload[k]);
       let result;
       if (patient?.id) { result = await db.updatePaciente(patient.id, payload); }
       else { result = await db.createPaciente(payload); }
@@ -695,7 +583,7 @@ function PatientDetail({ patient, onUpdate, onBack }) {
       )}
 
       {!loading && tab === "membresía" && (
-        <MembresiaPaciente patient={localPatient} onUpdate={handleMembresiaSave} />
+        <Membership key={patient.id} patient={localPatient} onUpdate={handleMembresiaSave} />
       )}
 
       {!loading && tab === "sesiones" && (
@@ -878,7 +766,7 @@ function Login({ onLogin }) {
   return <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
     <form onSubmit={handle} style={{ ...S.card, width: 340 }}>
       <h1 style={{ color: C.accent }}>Núcleo</h1>
-      <p>Acceso del personal</p>
+      <p style={{ color: "#f59e0b", fontWeight: 700 }}>NÚCLEO PRUEBAS · Datos ficticios</p><p>Acceso del personal</p>
       <Field label="Correo"><input required type="email" autoComplete="username" style={S.input} value={email} onChange={e => setEmail(e.target.value)} /></Field>
       <Field label="Contraseña"><input required type="password" autoComplete="current-password" style={S.input} value={pw} onChange={e => setPw(e.target.value)} /></Field>
       {error && <p role="alert" style={{ color: C.danger }}>{error}</p>}
@@ -944,7 +832,7 @@ export default function App() {
   return (
     <div style={S.app}>
       <div style={S.sidebar}>
-        <div style={S.logo}><div style={S.logoText}>Núcleo</div><div style={S.logoSub}>Sistema Clínico</div></div>
+        <div style={S.logo}><div style={S.logoText}>Núcleo</div><div style={S.logoSub}>PRUEBAS · Datos ficticios</div></div>
         {navItems.map(([key, icon, label]) => (
           <div key={key} style={S.navItem(view === key && !selected && !addingPatient)} onClick={() => { setView(key); setSelected(null); setAddingPatient(false); }}>
             <span>{icon}</span><span>{label}</span>
@@ -970,11 +858,11 @@ export default function App() {
             <PatientList patients={patients} onSelect={setSelected} onAdd={() => setAddingPatient(true)} />
           )}
           {!loadingPatients && view === "membresias" && !selected && (
-            <MembresiasView
+            <><MembershipLookup onSelect={handleSelectFromMembresias} /><MembresiasView
               patients={patients}
               onSelectPatient={handleSelectFromMembresias}
               onUpdate={(updated) => setPatients(prev => prev.map(p => p.id === updated.id ? updated : p))}
-            />
+            /></>
           )}
           {addingPatient && <PatientForm onSave={(p) => { setPatients(prev => [p, ...prev]); setSelected(p); setAddingPatient(false); setView("patients"); }} onCancel={() => setAddingPatient(false)} />}
           {selected && (
