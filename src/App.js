@@ -1,3 +1,4 @@
+import { resolveQr } from './qr';
 import Membership, { MembershipLookup, currentPackage, membershipAction } from "./Membership";
 import { useState, useEffect, useRef } from "react";
 
@@ -483,8 +484,8 @@ function PatientForm({ patient, onSave, onCancel }) {
 }
 
 // ── Patient Detail ────────────────────────────────────────────────
-function PatientDetail({ patient, onUpdate, onBack }) {
-  const [tab, setTab] = useState("resumen");
+function PatientDetail({ patient, onUpdate, onBack, initialTab = "resumen" }) {
+  const [tab, setTab] = useState(initialTab);
   const [sesiones, setSesiones] = useState([]);
   const [labs, setLabs] = useState([]);
   const [addSession, setAddSession] = useState(false);
@@ -778,6 +779,9 @@ function Login({ onLogin }) {
 // ── App Root ──────────────────────────────────────────────────────
 export default function App() {
   const [auth, setAuth] = useState(false);
+  const [qrHash, setQrHash] = useState(window.location.hash);
+  const [qrError, setQrError] = useState("");
+  const [detailTab, setDetailTab] = useState("resumen");
   const [loadError, setLoadError] = useState("");
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
@@ -810,6 +814,24 @@ export default function App() {
     }
   }, [auth]);
 
+  useEffect(() => {
+    const update = () => setQrHash(window.location.hash);
+    window.addEventListener('hashchange', update);
+    return () => window.removeEventListener('hashchange', update);
+  }, []);
+  useEffect(() => {
+    if (!auth || !qrHash.startsWith('#membresia=')) return;
+    let active = true;
+    setQrError('');
+    resolveQr(window.location.origin + '/' + qrHash).then(patient => {
+      if (!active) return;
+      setDetailTab('membresía'); setSelected(patient); setAddingPatient(false); setView('patients');
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      setQrHash('');
+    }).catch(e => { if (active) setQrError(e.message); });
+    return () => { active = false; };
+  }, [auth, qrHash]);
+
   if (!auth) return <Login onLogin={() => setAuth(true)} />;
 
   const navItems = [
@@ -825,6 +847,7 @@ export default function App() {
     : "Pacientes";
 
   const handleSelectFromMembresias = (p) => {
+    setDetailTab("membresía");
     setSelected(p);
     setView("patients");
   };
@@ -849,13 +872,14 @@ export default function App() {
           <div style={{ fontSize: 12, color: C.muted }}>{new Date().toLocaleDateString("es-MX", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</div>
         </div>
         <div style={S.content}>
+          {qrError && <p role="alert" style={{ color: C.danger }}>{qrError}</p>}
           {loadError && <p role="alert" style={{ color: C.danger }}>{loadError}</p>}
           {loadingPatients && <div style={{ color: C.muted, padding: 20 }}>Cargando pacientes...</div>}
           {!loadingPatients && view === "dashboard" && !selected && (
             <Dashboard patients={patients} onGoToMembresias={() => setView("membresias")} />
           )}
           {!loadingPatients && view === "patients" && !selected && !addingPatient && (
-            <PatientList patients={patients} onSelect={setSelected} onAdd={() => setAddingPatient(true)} />
+            <PatientList patients={patients} onSelect={p => { setDetailTab("resumen"); setSelected(p); }} onAdd={() => setAddingPatient(true)} />
           )}
           {!loadingPatients && view === "membresias" && !selected && (
             <><MembershipLookup onSelect={handleSelectFromMembresias} /><MembresiasView
@@ -866,7 +890,8 @@ export default function App() {
           )}
           {addingPatient && <PatientForm onSave={(p) => { setPatients(prev => [p, ...prev]); setSelected(p); setAddingPatient(false); setView("patients"); }} onCancel={() => setAddingPatient(false)} />}
           {selected && (
-            <PatientDetail
+            <PatientDetail key={selected.id}
+              initialTab={detailTab}
               patient={selected}
               onUpdate={(updated) => { setPatients(prev => prev.map(p => p.id === updated.id ? updated : p)); setSelected(updated); }}
               onBack={() => { setSelected(null); }}

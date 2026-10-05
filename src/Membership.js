@@ -1,3 +1,5 @@
+import QrScanner from './QrScanner';
+import { cardUrl, resolveQr } from './qr';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from './authClient';
@@ -71,8 +73,8 @@ export default function Membership({ patient, onUpdate }) {
         <p><strong>{pack.aplicaciones} de 4 aplicaciones disponibles</strong></p>
         <p>Nutrición: {pack.nutricion ?? 'por confirmar'} · Fisioterapia: {pack.fisioterapia ?? 'por confirmar'}</p>
         <p>Sin caducidad por fecha. Los servicios pendientes se pierden al renovar.</p>
-        <div style={{ background: 'white', padding: 12, display: 'inline-block' }}><QRCodeSVG value={`nucleo:${pack.qr}`} size={160} /></div>
-        <p style={{ fontSize: 12 }}>QR de identificación para el personal autorizado. No descuenta servicios al escanearlo.</p>
+        <div style={{ background: 'white', padding: 12, display: 'inline-block' }}><QRCodeSVG value={cardUrl(pack.qr)} size={160} /></div>
+        <p><a href={cardUrl(pack.qr)} style={{ color: "#00d4aa" }}>Abrir enlace de membresía</a></p><p style={{ fontSize: 12 }}>QR de identificación para el personal autorizado. No descuenta servicios al escanearlo.</p>
         <button style={button} disabled={busy || pack.nutricion !== 1} onClick={() => act('nutricion')}>Registrar nutrición</button>
         <button style={button} disabled={busy || pack.fisioterapia !== 1} onClick={() => act('fisioterapia')}>Registrar fisioterapia</button>
         <p>Las aplicaciones se registran desde la pestaña Sesiones.</p>
@@ -110,19 +112,19 @@ export default function Membership({ patient, onUpdate }) {
 
 export function MembershipLookup({ onSelect }) {
   const [code, setCode] = useState(''); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
-  async function find(e) {
-    e.preventDefault(); setError('');
-    const token = code.trim().replace(/^nucleo:/, '');
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) { setError('Código no válido.'); return; }
-    setBusy(true);
-    try {
-      const r = await supabase.from('paquetes').select('paciente_id,cerrado').eq('qr', token).maybeSingle();
-      if (r.error) throw r.error;
-      if (!r.data || r.data.cerrado) throw new Error('Tarjeta no disponible o de un paquete anterior.');
-      const p = await supabase.from('pacientes').select('*').eq('id', r.data.paciente_id).single();
-      if (p.error) throw p.error;
-      onSelect(p.data);
-    } catch (e2) { setError(e2.message); } finally { setBusy(false); }
+  const [camera, setCamera] = useState(false);
+  const lock = useRef(false);
+  async function find(value) {
+    if (lock.current) return;
+    lock.current = true; setBusy(true); setError(''); setCamera(false);
+    try { onSelect(await resolveQr(value)); }
+    catch (e) { setError(e.message); }
+    finally { lock.current = false; setBusy(false); }
   }
-  return <form onSubmit={find} style={panel}><label>Código de tarjeta <input value={code} onChange={e => setCode(e.target.value)} placeholder="Pega el código leído del QR" /></label><button disabled={busy} style={button}>Buscar membresía</button>{error && <p role="alert">{error}</p>}</form>;
+  return <div style={panel}>
+    <button type="button" style={button} disabled={busy || camera} onClick={() => { setError(''); setCamera(true); }}>Escanear QR</button>
+    {camera && <QrScanner onClose={() => setCamera(false)} onRead={value => { setCode(value); find(value); }} />}
+    <form onSubmit={e => { e.preventDefault(); find(code); }}><label>Código o enlace de tarjeta <input value={code} onChange={e => setCode(e.target.value)} placeholder="Pega el enlace o código del QR" /></label><button disabled={busy} style={button}>Buscar membresía</button></form>
+    {error && <p role="alert">{error}</p>}
+  </div>;
 }
