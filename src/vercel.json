@@ -1,5 +1,0 @@
-{
-  "installCommand": "npx --yes pnpm@11.25.0 install --frozen-lockfile --ignore-scripts",
-  "buildCommand": "npm run build",
-  "outputDirectory": "build"
-}
