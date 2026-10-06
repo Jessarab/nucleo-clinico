@@ -1,4 +1,5 @@
 import QrScanner from './QrScanner';
+import { SharePatientCard } from './PatientCard';
 import { cardUrl, resolveQr } from './qr';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -78,6 +79,7 @@ export default function Membership({ patient, onUpdate }) {
         <button style={button} disabled={busy || pack.nutricion !== 1} onClick={() => act('nutricion')}>Registrar nutrición</button>
         <button style={button} disabled={busy || pack.fisioterapia !== 1} onClick={() => act('fisioterapia')}>Registrar fisioterapia</button>
         <p>Las aplicaciones se registran desde la pestaña Sesiones.</p>
+        <SharePatientCard patientId={patient.id} />
         {pack.nutricion === null && <div>
           <p>Confirma los servicios disponibles del paquete anterior:</p>
           <label>Nutrición <select value={nutrition} onChange={e => setNutrition(e.target.value)}><option value="">Elegir</option><option value="1">1 pendiente</option><option value="0">Ya utilizada</option></select></label>{' '}
