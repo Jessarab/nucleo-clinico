@@ -2,12 +2,15 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
+import PatientCard from './PatientCard';
 import reportWebVitals from './reportWebVitals';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <App />
+    {new URLSearchParams(window.location.hash.slice(1)).has('tarjeta')
+      ? <PatientCard token={new URLSearchParams(window.location.hash.slice(1)).get('tarjeta')} />
+      : <App />}
   </React.StrictMode>
 );
 
