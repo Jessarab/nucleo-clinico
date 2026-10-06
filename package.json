@@ -8,6 +8,8 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^13.5.0",
+    "@zxing/browser": "^0.2.1",
+    "qrcode.react": "^4.2.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-scripts": "5.0.1",
@@ -15,7 +17,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build",
+    "build": "node -e \"process.env.GENERATE_SOURCEMAP='false';require('react-scripts/scripts/build')\"",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -38,6 +40,7 @@
     ]
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "eslint-config-react-app": "7.0.1"
   },
   "engines": {
