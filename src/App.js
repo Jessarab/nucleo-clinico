@@ -35,31 +35,31 @@ const db = {
 
 // ── Color tokens ──────────────────────────────────────────────────
 const C = {
-  bg: "#0d1117", surface: "#161b22", card: "#1c2330", border: "#2a3441",
-  accent: "#00d4aa", accentDim: "#00d4aa22", warn: "#f59e0b",
-  danger: "#ef4444", ok: "#22c55e", text: "#e6edf3", muted: "#7d8590", label: "#a0aab4",
-  purple: "#a78bfa", purpleDim: "#a78bfa22",
+  bg: "#F7F4EF", surface: "#F7F4EF", card: "#FFFFFF", border: "#D6DFDB",
+  accent: "#0F5E61", accentDim: "#84DAD433", warn: "#87520B",
+  danger: "#B23838", ok: "#0F5E61", text: "#263536", muted: "#566867", label: "#435958",
+  purple: "#263536", purpleDim: "#CBBFDA40",
 };
 
 const S = {
-  app: { fontFamily: "'DM Sans', sans-serif", background: C.bg, color: C.text, minHeight: "100vh", display: "flex" },
+  app: { fontFamily: "system-ui, sans-serif", background: C.bg, color: C.text, minHeight: "100vh", display: "flex" },
   sidebar: { width: 220, background: C.surface, borderRight: `1px solid ${C.border}`, display: "flex", flexDirection: "column", padding: "28px 0 20px", flexShrink: 0 },
   logo: { padding: "0 20px 28px", borderBottom: `1px solid ${C.border}`, marginBottom: 16 },
   logoText: { fontSize: 20, fontWeight: 700, color: C.accent, letterSpacing: "-0.5px" },
   logoSub: { fontSize: 11, color: C.muted, marginTop: 2, letterSpacing: 1 },
-  navItem: (active) => ({ display: "flex", alignItems: "center", gap: 10, padding: "10px 20px", cursor: "pointer", background: active ? C.accentDim : "transparent", borderLeft: `3px solid ${active ? C.accent : "transparent"}`, color: active ? C.accent : C.label, fontSize: 13.5, fontWeight: active ? 600 : 400, transition: "all 0.15s" }),
+  navItem: (active) => ({ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, padding: "10px 20px", cursor: "pointer", background: active ? C.accentDim : "transparent", borderLeft: `3px solid ${active ? C.accent : "transparent"}`, color: active ? C.accent : C.label, fontSize: 13.5, fontWeight: active ? 600 : 400, transition: "all 0.15s" }),
   main: { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" },
-  topbar: { padding: "16px 28px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", background: C.surface },
+  topbar: { padding: "16px 28px", borderBottom: `1px solid ${C.border}`, display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", background: C.surface },
   pageTitle: { fontSize: 17, fontWeight: 600, color: C.text },
   content: { flex: 1, overflowY: "auto", padding: "24px 28px" },
-  card: { background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: 20, marginBottom: 16 },
+  card: { background: C.card, border: `1px solid ${C.border}`, borderRadius: 18, padding: 24, marginBottom: 20, boxShadow: "0 4px 18px #0F5E6106" },
   cardTitle: { fontSize: 13, fontWeight: 600, color: C.accent, marginBottom: 14, letterSpacing: 0.5, textTransform: "uppercase" },
-  grid: (cols) => ({ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 14 }),
+  grid: (cols) => ({ display: "grid", gridTemplateColumns: `repeat(auto-fit, minmax(min(100%, ${cols > 3 ? 150 : 220}px), 1fr))`, gap: 14 }),
   label: { fontSize: 11.5, color: C.muted, marginBottom: 4, display: "block", letterSpacing: 0.3 },
-  input: { width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6, padding: "8px 10px", color: C.text, fontSize: 13, outline: "none", boxSizing: "border-box" },
-  textarea: { width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6, padding: "8px 10px", color: C.text, fontSize: 13, outline: "none", boxSizing: "border-box", resize: "vertical", minHeight: 72 },
-  select: { width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6, padding: "8px 10px", color: C.text, fontSize: 13, outline: "none" },
-  btn: (variant = "primary") => ({ padding: "8px 18px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: variant === "primary" ? C.accent : variant === "danger" ? C.danger : C.border, color: variant === "primary" ? "#0d1117" : C.text, transition: "opacity 0.15s" }),
+  input: { width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 10px", color: C.text, fontSize: 13, outlineOffset: 3, boxSizing: "border-box" },
+  textarea: { width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 10px", color: C.text, fontSize: 13, outline: "none", boxSizing: "border-box", resize: "vertical", minHeight: 72 },
+  select: { width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 10px", color: C.text, fontSize: 13, outline: "none" },
+  btn: (variant = "primary") => ({ padding: "8px 18px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: variant === "primary" ? C.accent : variant === "danger" ? C.danger : C.border, color: variant === "primary" || variant === "danger" ? "#F7F4EF" : C.text, transition: "opacity 0.15s" }),
   badge: (color) => ({ display: "inline-block", padding: "2px 8px", borderRadius: 20, fontSize: 11, fontWeight: 600, background: color + "22", color: color, border: `1px solid ${color}44` }),
   statBox: { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: "14px 16px" },
   statVal: { fontSize: 22, fontWeight: 700, color: C.accent, lineHeight: 1 },
@@ -76,7 +76,7 @@ function Sparkline({ values, color = C.accent, height = 40, width = 120 }) {
   const min = Math.min(...values), max = Math.max(...values), range = max - min || 1;
   const pts = values.map((v, i) => `${(i / (values.length - 1)) * (width - 4) + 2},${height - 4 - ((v - min) / range) * (height - 8)}`).join(" ");
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
       <svg width={width} height={height}><polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" /><circle cx={pts.split(" ").pop().split(",")[0]} cy={pts.split(" ").pop().split(",")[1]} r="3" fill={color} /></svg>
       <span style={{ fontSize: 13, fontWeight: 600, color }}>{values[values.length - 1]}</span>
     </div>
@@ -152,8 +152,8 @@ function MembresiasView({ patients, onSelectPatient, onUpdate }) {
       </div>
 
       {/* Toolbar */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
-        <div style={{ display: "flex", gap: 6 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16, alignItems: "center" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {chips.map(c => (
             <button key={c.key} onClick={() => setFilter(c.key)} style={{ padding: "5px 14px", borderRadius: 20, fontSize: 12, cursor: "pointer", border: `1px solid ${filter === c.key ? C.accent : C.border}`, background: filter === c.key ? C.accentDim : "transparent", color: filter === c.key ? C.accent : C.muted, fontWeight: filter === c.key ? 600 : 400 }}>
               {c.label}
@@ -186,7 +186,7 @@ function MembresiasView({ patients, onSelectPatient, onUpdate }) {
               <div style={{ fontSize: 11, color: C.muted, marginTop: 6, fontFamily: "monospace" }}>{p.dosis_actual || "2.5"} mg</div>
               {plan !== "sin_plan" && total > 0 && (
                 <div style={{ marginTop: 10 }}>
-                  <div style={{ display: "flex", gap: 3, marginBottom: 5 }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginBottom: 5 }}>
                     {Array.from({ length: total }, (_, i) => (
                       <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: i < used ? C.border : color }} />
                     ))}
@@ -249,12 +249,12 @@ Analiza este resultado y extrae los valores. Responde SOLO con JSON válido sin 
   return (
     <div style={{ ...S.card, borderColor: C.accent + "44", background: C.accentDim }}>
       <div style={S.cardTitle}>📄 Leer laboratorio con IA</div>
-      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
         <input ref={fileRef} type="file" accept="image/*,.pdf" onChange={handleFile} style={{ display: "none" }} />
         <button style={S.btn("secondary")} onClick={() => fileRef.current.click()}>📁 {file ? file.name : "Seleccionar archivo"}</button>
         {file && <button style={S.btn("primary")} onClick={analyze} disabled={loading}>{loading ? "⏳ Analizando..." : "✨ Extraer valores"}</button>}
       </div>
-      {preview && file?.type?.startsWith("image") && <img src={preview} alt="lab" style={{ marginTop: 10, maxHeight: 160, borderRadius: 6, opacity: 0.8 }} />}
+      {preview && file?.type?.startsWith("image") && <img src={preview} alt="lab" style={{ marginTop: 10, maxHeight: 160, borderRadius: 10, opacity: 0.8 }} />}
     </div>
   );
 }
@@ -300,7 +300,7 @@ function LabForm({ pacienteId, onSave, onCancel }) {
         })}
       </div>
       <Field label="Notas"><textarea style={{ ...S.textarea, marginBottom: 14 }} value={vals.notas_lab || ""} onChange={(e) => set("notas_lab", e.target.value)} /></Field>
-      <div style={{ display: "flex", gap: 8 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         <button style={S.btn("primary")} onClick={handleSave} disabled={saving}>{saving ? "Guardando..." : "Guardar"}</button>
         <button style={S.btn("secondary")} onClick={onCancel}>Cancelar</button>
       </div>
@@ -348,7 +348,7 @@ function SessionForm({ pacienteId, num, onSave, onCancel, patient, onUpdatePatie
 
   return (
     <div style={S.card}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, marginBottom: 14 }}>
         <div style={S.cardTitle}>Sesión #{num}</div>
         {isInBody && <span style={S.badge(C.accent)}>📊 InBody + mediciones</span>}
         {!isInBody && <span style={{ fontSize: 12, color: C.muted }}>Solo seguimiento</span>}
@@ -400,12 +400,12 @@ function SessionForm({ pacienteId, num, onSave, onCancel, patient, onUpdatePatie
       {/* Síntomas / efectos secundarios unificados */}
       <div style={{ ...S.card, background: C.surface, marginBottom: 14 }}>
         <div style={{ fontSize: 12, color: C.muted, fontWeight: 600, marginBottom: 12 }}>Síntomas y efectos secundarios</div>
-        <div style={{ display: "flex", gap: 20, marginBottom: 12, flexWrap: "wrap" }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 20, marginBottom: 12 }}>
+          <label style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
             <input type="checkbox" checked={vals.evento_adverso || vals.malestar_gi} onChange={(e) => { set("evento_adverso", e.target.checked); set("malestar_gi", e.target.checked); }} />
             ⚠️ Presentó síntomas / efectos secundarios
           </label>
-          <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
+          <label style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
             <input type="checkbox" checked={vals.ajuste_dosis} onChange={(e) => set("ajuste_dosis", e.target.checked)} />
             💊 Ajuste de dosis
           </label>
@@ -423,7 +423,7 @@ function SessionForm({ pacienteId, num, onSave, onCancel, patient, onUpdatePatie
       </div>
 
       <Field label="Notas de sesión"><textarea style={{ ...S.textarea, marginBottom: 14 }} value={vals.notas || ""} onChange={(e) => set("notas", e.target.value)} /></Field>
-      <div style={{ display: "flex", gap: 8 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         <button style={S.btn("primary")} onClick={handleSave} disabled={saving}>{saving ? "Guardando..." : "Guardar sesión"}</button>
         <button style={S.btn("secondary")} onClick={onCancel}>Cancelar</button>
       </div>
@@ -475,7 +475,7 @@ function PatientForm({ patient, onSave, onCancel }) {
           </div>
         </div>
       ))}
-      <div style={{ display: "flex", gap: 8 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         <button style={S.btn("primary")} onClick={handleSave} disabled={saving}>{saving ? "Guardando..." : patient ? "Guardar cambios" : "Crear paciente"}</button>
         <button style={S.btn("secondary")} onClick={onCancel}>Cancelar</button>
       </div>
@@ -516,19 +516,19 @@ function PatientDetail({ patient, onUpdate, onBack, initialTab = "resumen" }) {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 14, marginBottom: 20 }}>
         <button style={{ ...S.btn("secondary"), padding: "6px 12px" }} onClick={onBack}>← Volver</button>
         <div>
           <div style={{ fontSize: 18, fontWeight: 700 }}>{localPatient.nombre}</div>
           <div style={{ fontSize: 12, color: C.muted }}>{localPatient.edad} años · {localPatient.sexo === "F" ? "Femenino" : "Masculino"} · Ingreso: {localPatient.fecha_ingreso}</div>
         </div>
-        <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
+        <div style={{ marginLeft: "auto", display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
           <span style={S.badge(planColor)}>{PLAN_LABELS[localPatient.plan || "sin_plan"]}</span>
           <span style={S.badge(C.accent)}>{localPatient.diagnostico?.split(",")[0]}</span>
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 4, marginBottom: 20, borderBottom: `1px solid ${C.border}` }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 20, borderBottom: `1px solid ${C.border}` }}>
         {["resumen", "membresía", "sesiones", "laboratorios", "perfil"].map(t => (
           <button key={t} onClick={() => setTab(t)} style={{ background: "none", border: "none", borderBottom: `2px solid ${tab === t ? C.accent : "transparent"}`, color: tab === t ? C.accent : C.muted, padding: "8px 16px", cursor: "pointer", fontWeight: tab === t ? 600 : 400, fontSize: 13, textTransform: "capitalize" }}>{t}</button>
         ))}
@@ -552,7 +552,7 @@ function PatientDetail({ patient, onUpdate, onBack, initialTab = "resumen" }) {
                   <div style={{ fontWeight: 600, color: planColor }}>{PLAN_LABELS[localPatient.plan]}</div>
                 </div>
                 <div style={{ textAlign: "right" }}>
-                  <div style={{ display: "flex", gap: 3, justifyContent: "flex-end", marginBottom: 4 }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 3, justifyContent: "flex-end", marginBottom: 4 }}>
                     {Array.from({ length: localPatient.apps_total || 0 }, (_, i) => (
                       <div key={i} style={{ width: 10, height: 10, borderRadius: "50%", background: i < (localPatient.apps_usadas || 0) ? C.border : planColor }} />
                     ))}
@@ -621,7 +621,7 @@ function PatientDetail({ patient, onUpdate, onBack, initialTab = "resumen" }) {
               )}
               {/* Síntomas unificados */}
               {(s.evento_adverso || s.malestar_gi) && (
-                <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
                   <span style={S.tag(false)}>⚠️ {s.tipo_ea || s.tipo_gi || "Síntomas reportados"}</span>
                   {s.ajuste_dosis && <span style={S.badge(C.warn)}>💊 {s.nota_ajuste}</span>}
                 </div>
@@ -678,7 +678,7 @@ function PatientList({ patients, onSelect, onAdd }) {
   const filtered = patients.filter(p => p.nombre?.toLowerCase().includes(search.toLowerCase()) && p.nombre !== "test");
   return (
     <div>
-      <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 20 }}>
         <input style={{ ...S.input, flex: 1 }} placeholder="Buscar paciente..." value={search} onChange={(e) => setSearch(e.target.value)} />
         <button style={S.btn("primary")} onClick={onAdd}>+ Nuevo paciente</button>
       </div>
@@ -730,7 +730,7 @@ function Dashboard({ patients, onGoToMembresias }) {
         {real.slice(0, 8).map(p => (
           <div key={p.id} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
             <div><div style={{ fontWeight: 500, fontSize: 13 }}>{p.nombre}</div><div style={{ fontSize: 11, color: C.muted }}>{p.diagnostico?.split(",")[0]}</div></div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
               {p.plan && p.plan !== "sin_plan" && <span style={S.badge(PLAN_COLORS[p.plan])}>{PLAN_LABELS[p.plan]}</span>}
               <span style={{ fontSize: 11, color: C.muted }}>Ingreso: {p.fecha_ingreso}</span>
             </div>
@@ -764,10 +764,10 @@ function Login({ onLogin }) {
     } catch (e) { setError(e.message); }
     finally { setBusy(false); }
   };
-  return <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-    <form onSubmit={handle} style={{ ...S.card, width: 340 }}>
-      <h1 style={{ color: C.accent }}>Núcleo</h1>
-      <p style={{ color: "#f59e0b", fontWeight: 700 }}>NÚCLEO · Acceso del personal</p><p>Acceso del personal</p>
+  return <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "center" }}>
+    <form onSubmit={handle} className="nucleo-login" style={{ ...S.card, width: 380, maxWidth: "calc(100% - 32px)", boxSizing: "border-box" }}>
+      <h1 style={{ color: C.accent, letterSpacing: 3 }}>NÚCLEO</h1><p style={{color:C.accent}}>Centrados en ti.</p>
+      <h2 style={{fontSize:20}}>Acceso del personal</h2><p style={{color:C.muted}}>Bienvenido a tu espacio de atención.</p>
       <Field label="Correo"><input required type="email" autoComplete="username" style={S.input} value={email} onChange={e => setEmail(e.target.value)} /></Field>
       <Field label="Contraseña"><input required type="password" autoComplete="current-password" style={S.input} value={pw} onChange={e => setPw(e.target.value)} /></Field>
       {error && <p role="alert" style={{ color: C.danger }}>{error}</p>}
@@ -858,25 +858,25 @@ export default function App() {
   };
 
   return (
-    <div style={S.app}>
-      <div style={S.sidebar}>
-        <div style={S.logo}><div style={S.logoText}>Núcleo</div><div style={S.logoSub}>Sistema Clínico</div></div>
+    <div className="nucleo-app" style={S.app}>
+      <aside className="nucleo-sidebar" style={S.sidebar}>
+        <div style={S.logo}><div style={S.logoText}>NÚCLEO</div><div style={S.logoSub}>Centrados en ti.</div></div>
         {navItems.map(([key, icon, label]) => (
-          <div key={key} style={S.navItem(view === key && !selected && !addingPatient)} onClick={() => { setView(key); setSelected(null); setAddingPatient(false); }}>
-            <span>{icon}</span><span>{label}</span>
-          </div>
+          <button type="button" className="nucleo-nav" aria-current={view === key && !selected && !addingPatient ? "page" : undefined} key={key} style={S.navItem(view === key && !selected && !addingPatient)} onClick={() => { setView(key); setSelected(null); setAddingPatient(false); }}>
+            <span aria-hidden="true">{icon}</span><span>{label}</span>
+          </button>
         ))}
         <div style={{ marginTop: "auto", padding: "0 20px" }}>
-          <div style={{ fontSize: 11, color: C.muted }}>v2.1 · Supabase</div>
+          <div style={{ fontSize: 11, color: C.muted }}>Salud metabólica integral</div>
           <button style={{ ...S.btn("secondary"), width: "100%", marginTop: 8, fontSize: 12 }} onClick={async () => { setAuth(false); setPatients([]); setSelected(null); setAddingPatient(false); await supabase.auth.signOut({ scope: "local" }); }}>Cerrar sesión</button>
         </div>
-      </div>
-      <div style={S.main}>
-        <div style={S.topbar}>
+      </aside>
+      <div className="nucleo-main" style={S.main}>
+        <header className="nucleo-topbar" style={S.topbar}>
           <div style={S.pageTitle}>{pageTitle}</div>
           <div style={{ fontSize: 12, color: C.muted }}>{new Date().toLocaleDateString("es-MX", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</div>
-        </div>
-        <div style={S.content}>
+        </header>
+        <div className="nucleo-content" style={S.content}>
           {qrError && <p role="alert" style={{ color: C.danger }}>{qrError}</p>}
           {loadError && <p role="alert" style={{ color: C.danger }}>{loadError}</p>}
           {loadingPatients && <div style={{ color: C.muted, padding: 20 }}>Cargando pacientes...</div>}
