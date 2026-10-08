@@ -1,3 +1,4 @@
+import BalanceStatus from './BalanceStatus';
 import { useCallback, useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from './authClient';
@@ -76,7 +77,7 @@ export default function PatientCard({ token }) {
       {busy && <p role="status">Consultando tus saldos…</p>}
       {error && <p role="alert">{error}</p>}
       {card && <>
-        <p>Hola, {card.nombre}</p>
+        <p style={{fontWeight:800,fontSize:19}}>Hola, {card.nombre}</p><BalanceStatus remaining={card.aplicaciones} />
         <div style={{background:'#0F5E61',color:'#F7F4EF',borderRadius:18,padding:'20px 24px',position:'relative',overflow:'hidden'}}>
           <span aria-hidden="true" style={{position:'absolute',width:100,height:100,border:'18px solid #84DAD4',borderRadius:'50%',right:-42,top:-38,opacity:0.35}} />
           <strong style={{fontSize:56,lineHeight:1.15}}>{card.aplicaciones}<span style={{fontSize:22,fontWeight:400}}> / 4</span></strong><p style={{margin:'8px 0 0',fontSize:14}}>Aplicaciones disponibles</p>

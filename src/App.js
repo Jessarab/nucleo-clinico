@@ -1,3 +1,4 @@
+import BalanceStatus from './BalanceStatus';
 import { resolveQr } from './qr';
 import Membership, { MembershipLookup, currentPackage, membershipAction } from "./Membership";
 import { useState, useEffect, useRef } from "react";
@@ -170,7 +171,6 @@ function MembresiasView({ patients, onSelectPatient, onUpdate }) {
           const color = PLAN_COLORS[plan];
           const rest = Math.max(0, (p.apps_total || 0) - (p.apps_usadas || 0));
           const total = p.apps_total || 0;
-          const used = p.apps_usadas || 0;
           const isAlerta = plan !== "sin_plan" && rest <= 1;
 
           return (
@@ -181,21 +181,10 @@ function MembresiasView({ patients, onSelectPatient, onUpdate }) {
               onMouseEnter={e => e.currentTarget.style.borderColor = color + "88"}
               onMouseLeave={e => e.currentTarget.style.borderColor = isAlerta ? (rest === 0 ? C.danger + "40" : C.warn + "40") : C.border}
             >
-              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, lineHeight: 1.3 }}>{p.nombre}</div>
-              <span style={S.badge(color)}>{PLAN_LABELS[plan]}</span>
+              <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 10, lineHeight: 1.4 }}>{p.nombre}</div>
+              <span style={{...S.badge(color), background: plan === "plus" ? "#CBBFDA66" : "#DCE5E2", color: "#263536", borderColor: plan === "plus" ? "#B7A4C9" : C.border, fontWeight: 700}}>{PLAN_LABELS[plan]}</span>
               <div style={{ fontSize: 11, color: C.muted, marginTop: 6, fontFamily: "monospace" }}>{p.dosis_actual || "2.5"} mg</div>
-              {plan !== "sin_plan" && total > 0 && (
-                <div style={{ marginTop: 10 }}>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginBottom: 5 }}>
-                    {Array.from({ length: total }, (_, i) => (
-                      <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: i < used ? C.border : color }} />
-                    ))}
-                  </div>
-                  <div style={{ fontSize: 12, color: rest === 0 ? C.danger : rest <= 1 ? C.warn : C.muted, fontWeight: rest <= 1 ? 600 : 400 }}>
-                    {rest === 0 ? "Sin apps restantes" : `${rest} de ${total} restantes`}
-                  </div>
-                </div>
-              )}
+              {plan !== "sin_plan" && total > 0 && <BalanceStatus remaining={rest} />}
               {plan === "sin_plan" && <div style={{ fontSize: 11, color: C.muted, marginTop: 8, fontStyle: "italic" }}>Click para asignar plan</div>}
             </div>
           );
@@ -907,4 +896,5 @@ export default function App() {
     </div>
   );
 }
+
 

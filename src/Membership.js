@@ -1,3 +1,4 @@
+import BalanceStatus from './BalanceStatus';
 import QrScanner from './QrScanner';
 import { SharePatientCard } from './PatientCard';
 import { cardUrl, resolveQr } from './qr';
@@ -69,9 +70,9 @@ export default function Membership({ patient, onUpdate }) {
   return <section className="nucleo-membership">
     {error && <p role="alert" style={{ color: '#B23838' }}>{error}</p>}
     <div style={panel}>
-      <h2>NÚCLEO · Membresía Plus</h2><p>{patient.nombre}</p>
+      <h2>NÚCLEO · Membresía Plus</h2><p style={{fontWeight:800,fontSize:20}}>{patient.nombre}</p>
       {pack ? <>
-        <p><strong>{pack.aplicaciones} de 4 aplicaciones disponibles</strong></p>
+        <p><strong>{pack.aplicaciones} de 4 aplicaciones disponibles</strong></p><BalanceStatus remaining={pack.aplicaciones} />
         <p>Nutrición: {pack.nutricion ?? 'por confirmar'} · Fisioterapia: {pack.fisioterapia ?? 'por confirmar'}</p>
         <p>Sin caducidad por fecha. Los servicios pendientes se pierden al renovar.</p>
         <div style={{ background: 'white', padding: 12, display: 'inline-block' }}><QRCodeSVG value={cardUrl(pack.qr)} size={160} /></div>
