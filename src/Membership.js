@@ -17,7 +17,7 @@ export async function membershipAction(patientId, action, packId, requestId, dat
   if (error) throw error;
   return result;
 }
-const panel = { background: '#FFFFFF', color: '#263536', border: '1px solid #D6DFDB', borderRadius: 18, padding: 24, marginBottom: 16 };
+const panel = { background: '#E8F0ED', color: '#263536', border: '1px solid #BECECA', borderRadius: 18, padding: 24, marginBottom: 16 };
 const button = { background:'#0F5E61', color:'#F7F4EF', border:0, borderRadius:10, minHeight:44, fontWeight:600, padding: '10px 16px', margin: '8px 8px 8px 0', cursor: 'pointer' };
 const labels = { alta: 'Inicio de membresía', saldo_inicial: 'Saldo anterior importado', confirmar_incluidos: 'Servicios anteriores confirmados', aplicacion: 'Aplicación', nutricion: 'Nutrición', fisioterapia: 'Fisioterapia', cierre_por_renovacion: 'Cierre al renovar' };
 
@@ -104,7 +104,7 @@ export default function Membership({ patient, onUpdate }) {
         } catch (e) { setError(e.message); } finally { setBusy(false); }
       }}>Guardar datos del plan</button>
     </div>
-    <div style={panel}><h3>Historial de paquetes</h3>{packages.map(p => <div key={p.id} style={{ borderTop: '1px solid #D6DFDB', paddingTop: 12 }}>
+    <div style={panel}><h3>Historial de paquetes</h3>{packages.map(p => <div key={p.id} style={{ borderTop: '1px solid #BECECA', paddingTop: 12 }}>
       <strong>{p.cerrado ? 'Paquete cerrado' : 'Paquete actual'} · {new Date(p.iniciado).toLocaleDateString('es-MX')}</strong>
       {p.importado && <p>Saldo inicial importado. Fecha original: {p.fecha_original || 'sin registro'}.</p>}
       {moves.filter(m => m.paquete_id === p.id).map(m => <p key={m.id}>{new Date(m.fecha).toLocaleString('es-MX')} · {labels[m.tipo] || m.tipo}{m.tipo === 'cierre_por_renovacion' ? ` · Servicios no utilizados: nutrición ${m.detalle.nutricion_perdida ?? 'sin confirmar'}, fisioterapia ${m.detalle.fisioterapia_perdida ?? 'sin confirmar'}` : ''}</p>)}
@@ -130,3 +130,4 @@ export function MembershipLookup({ onSelect }) {
     {error && <p role="alert">{error}</p>}
   </div>;
 }
+

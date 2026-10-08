@@ -35,7 +35,7 @@ const db = {
 
 // ── Color tokens ──────────────────────────────────────────────────
 const C = {
-  bg: "#F7F4EF", surface: "#F7F4EF", card: "#FFFFFF", border: "#D6DFDB",
+  bg: "#DCE9E7", surface: "#D2E3E1", card: "#E8F0ED", border: "#BECECA",
   accent: "#0F5E61", accentDim: "#84DAD433", warn: "#87520B",
   danger: "#B23838", ok: "#0F5E61", text: "#263536", muted: "#566867", label: "#435958",
   purple: "#263536", purpleDim: "#CBBFDA40",
@@ -177,9 +177,9 @@ function MembresiasView({ patients, onSelectPatient, onUpdate }) {
             <div
               key={p.id}
               onClick={() => onSelectPatient(p)}
-              style={{ ...S.card, cursor: "pointer", borderColor: isAlerta ? (rest === 0 ? C.danger + "88" : C.warn + "88") : C.border, borderLeft: `3px solid ${isAlerta ? (rest === 0 ? C.danger : C.warn) : color}`, marginBottom: 0, transition: "border-color 0.15s" }}
+              style={{ ...S.card, cursor: "pointer", borderColor: isAlerta ? (rest === 0 ? C.danger + "40" : C.warn + "40") : C.border, borderLeft: `3px solid ${isAlerta ? (rest === 0 ? "#B98282" : "#B19B77") : "#A6C4C0"}`, marginBottom: 0, transition: "border-color 0.15s" }}
               onMouseEnter={e => e.currentTarget.style.borderColor = color + "88"}
-              onMouseLeave={e => e.currentTarget.style.borderColor = isAlerta ? (rest === 0 ? C.danger + "88" : C.warn + "88") : C.border}
+              onMouseLeave={e => e.currentTarget.style.borderColor = isAlerta ? (rest === 0 ? C.danger + "40" : C.warn + "40") : C.border}
             >
               <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, lineHeight: 1.3 }}>{p.nombre}</div>
               <span style={S.badge(color)}>{PLAN_LABELS[plan]}</span>
@@ -907,3 +907,4 @@ export default function App() {
     </div>
   );
 }
+

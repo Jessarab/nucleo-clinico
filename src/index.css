@@ -12,7 +12,7 @@ code {
     monospace;
 }
 
-body { background: #F7F4EF; color: #263536; }
+body { background: #DCE9E7; color: #263536; }
 button, input, select, textarea { font: inherit; }
 button { transition: filter .15s, box-shadow .15s; }
 button:hover:not(:disabled) { filter: brightness(.95); }
@@ -33,7 +33,7 @@ select:focus-visible, textarea:focus-visible {
 .nucleo-app input:not([type=checkbox]):not([type=radio]),
 .nucleo-app select, .nucleo-app textarea,
 .nucleo-login input {
-  background: #fff !important; color: #263536; border: 1px solid #B8C9C6;
+  background: #E8F0ED !important; color: #263536; border: 1px solid #B8C9C6;
   border-radius: 10px; padding: 10px 12px; min-height: 44px; max-width: 100%;
 }
 .nucleo-app input[type=checkbox], .nucleo-app input[type=radio] { accent-color: #0F5E61; }
@@ -47,7 +47,7 @@ select:focus-visible, textarea:focus-visible {
 .nucleo-app th { color: #0F5E61; }
 @media (max-width: 760px) {
   .nucleo-app { flex-direction: column; }
-  .nucleo-sidebar { position: static; width: 100% !important; height: auto; padding: 16px 0 !important; border-right: 0 !important; border-bottom: 1px solid #D6DFDB; display: grid !important; grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .nucleo-sidebar { position: static; width: 100% !important; height: auto; padding: 16px 0 !important; border-right: 0 !important; border-bottom: 1px solid #BECECA; display: grid !important; grid-template-columns: repeat(3,minmax(0,1fr)); }
   .nucleo-sidebar > :first-child { grid-column: 1 / -1; padding: 0 16px 12px !important; margin: 0 !important; }
   .nucleo-sidebar > :last-child { grid-column: 1 / -1; padding: 8px 16px 0 !important; }
   .nucleo-sidebar > :last-child > div { display: none; }
@@ -58,3 +58,4 @@ select:focus-visible, textarea:focus-visible {
   .nucleo-membership > div { padding: 18px !important; }
 }
 @media (prefers-reduced-motion: reduce) { button { transition: none; } }
+
