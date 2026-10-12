@@ -37,10 +37,10 @@ const db = {
 
 // ── Color tokens ──────────────────────────────────────────────────
 const C = {
-  bg: "#DCE9E7", surface: "#D2E3E1", card: "#E8F0ED", border: "#BECECA",
-  accent: "#0F5E61", accentDim: "#84DAD433", warn: "#87520B",
-  danger: "#B23838", ok: "#0F5E61", text: "#263536", muted: "#566867", label: "#435958",
-  purple: "#263536", purpleDim: "#CBBFDA40",
+  bg: "#142526", surface: "#1C3032", card: "#263B3D", border: "#496264",
+  accent: "#E6EFEC", accentDim: "#84DAD41C", warn: "#E7C17A",
+  danger: "#F2A5A0", ok: "#A2DCC9", text: "#E6EFEC", muted: "#B8CBC8", label: "#C7D8D4",
+  purple: "#CBBFDA", purpleDim: "#CBBFDA40",
 };
 
 const S = {
@@ -57,15 +57,15 @@ const S = {
   card: { background: C.card, border: `1px solid ${C.border}`, borderRadius: 18, padding: 24, marginBottom: 20, boxShadow: "0 4px 18px #0F5E6106" },
   cardTitle: { fontSize: 13, fontWeight: 600, color: C.accent, marginBottom: 14, letterSpacing: 0.5, textTransform: "uppercase" },
   grid: (cols) => ({ display: "grid", gridTemplateColumns: `repeat(auto-fit, minmax(min(100%, ${cols > 3 ? 150 : 220}px), 1fr))`, gap: 14 }),
-  label: { fontSize: 11.5, color: C.muted, marginBottom: 4, display: "block", letterSpacing: 0.3 },
-  input: { width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 10px", color: C.text, fontSize: 13, outlineOffset: 3, boxSizing: "border-box" },
+  label: { fontSize: 13, color: C.muted, marginBottom: 4, display: "block", letterSpacing: 0.3 },
+  input: { width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 10px", color: C.text, fontSize: 15, outlineOffset: 3, boxSizing: "border-box" },
   textarea: { width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 10px", color: C.text, fontSize: 13, outline: "none", boxSizing: "border-box", resize: "vertical", minHeight: 72 },
   select: { width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 10px", color: C.text, fontSize: 13, outline: "none" },
-  btn: (variant = "primary") => ({ padding: "8px 18px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: variant === "primary" ? C.accent : variant === "danger" ? C.danger : C.border, color: variant === "primary" || variant === "danger" ? "#F7F4EF" : C.text, transition: "opacity 0.15s" }),
+  btn: (variant = "primary") => ({ padding: "8px 18px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: variant === "primary" ? "#0F5E61" : variant === "danger" ? "#893C3C" : "#385355", color: variant === "primary" || variant === "danger" ? "#F7F4EF" : C.text, transition: "opacity 0.15s" }),
   badge: (color) => ({ display: "inline-block", padding: "2px 8px", borderRadius: 20, fontSize: 11, fontWeight: 600, background: color + "22", color: color, border: `1px solid ${color}44` }),
   statBox: { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: "14px 16px" },
   statVal: { fontSize: 22, fontWeight: 700, color: C.accent, lineHeight: 1 },
-  statLabel: { fontSize: 11.5, color: C.muted, marginTop: 4 },
+  statLabel: { fontSize: 13, color: C.muted, marginTop: 4 },
   tag: (ok) => ({ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 600, color: ok ? C.ok : C.danger, background: ok ? C.ok + "18" : C.danger + "18", border: `1px solid ${ok ? C.ok : C.danger}44`, borderRadius: 12, padding: "2px 8px" }),
 };
 
