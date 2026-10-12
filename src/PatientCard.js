@@ -1,3 +1,4 @@
+import PlusBadge from './PlusBadge';
 import BalanceStatus from './BalanceStatus';
 import { useCallback, useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -71,7 +72,7 @@ export default function PatientCard({ token }) {
         <p style={{color:'#0F5E61',letterSpacing:4,fontWeight:800,fontSize:24,margin:0}}>NÚCLEO</p>
         <p style={{color:'#0F5E61',fontSize:13,margin:'2px 0 20px'}}>Centrados en ti.</p>
         <p style={{fontSize:10,letterSpacing:1.5,margin:0}}>SALUD METABÓLICA INTEGRAL</p>
-        <h1 style={{fontSize:26,color:'#0F5E61',margin:'6px 0 0',fontWeight:650}}>Tu membresía Plus</h1>
+        <h1 style={{fontSize:26,color:'#0F5E61',margin:'6px 0 0',fontWeight:650}}>Tu membresía <PlusBadge /></h1>
       </header>
       <div style={{padding:'20px 24px 24px'}}>
       {busy && <p role="status">Consultando tus saldos…</p>}

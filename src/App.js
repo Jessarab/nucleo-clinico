@@ -1,3 +1,4 @@
+import PlusBadge from './PlusBadge';
 import BalanceStatus from './BalanceStatus';
 import { resolveQr } from './qr';
 import Membership, { MembershipLookup, currentPackage, membershipAction } from "./Membership";
@@ -182,7 +183,7 @@ function MembresiasView({ patients, onSelectPatient, onUpdate }) {
               onMouseLeave={e => e.currentTarget.style.borderColor = isAlerta ? (rest === 0 ? C.danger + "40" : C.warn + "40") : C.border}
             >
               <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 10, lineHeight: 1.4 }}>{p.nombre}</div>
-              <span style={{...S.badge(color), background: plan === "plus" ? "#CBBFDA66" : "#DCE5E2", color: "#263536", borderColor: plan === "plus" ? "#B7A4C9" : C.border, fontWeight: 700}}>{PLAN_LABELS[plan]}</span>
+              {plan === "plus" ? <PlusBadge /> : <span style={S.badge(color)}>{PLAN_LABELS[plan]}</span>}
               <div style={{ fontSize: 11, color: C.muted, marginTop: 6, fontFamily: "monospace" }}>{p.dosis_actual || "2.5"} mg</div>
               {plan !== "sin_plan" && total > 0 && <BalanceStatus remaining={rest} />}
               {plan === "sin_plan" && <div style={{ fontSize: 11, color: C.muted, marginTop: 8, fontStyle: "italic" }}>Click para asignar plan</div>}
@@ -343,7 +344,7 @@ function SessionForm({ pacienteId, num, onSave, onCancel, patient, onUpdatePatie
         {!isInBody && <span style={{ fontSize: 12, color: C.muted }}>Solo seguimiento</span>}
       </div>
 
-      {/* Aviso plan Plus */}
+      {/* Aviso plan Plus */}{isPlus && <PlusBadge />}
       {isPlus && (
         <div style={{ ...S.card, background: appsRestantes === 0 ? C.danger + "18" : appsRestantes === 1 ? C.warn + "18" : C.purple + "11", borderColor: appsRestantes === 0 ? C.danger + "66" : appsRestantes === 1 ? C.warn + "66" : C.purple + "44", marginBottom: 14, padding: "10px 14px" }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: appsRestantes === 0 ? C.danger : appsRestantes === 1 ? C.warn : C.purple }}>
@@ -475,6 +476,7 @@ function PatientForm({ patient, onSave, onCancel }) {
 // ── Patient Detail ────────────────────────────────────────────────
 function PatientDetail({ patient, onUpdate, onBack, initialTab = "resumen" }) {
   const [tab, setTab] = useState(initialTab);
+  useEffect(() => { setTab(initialTab); }, [initialTab]);
   const [sesiones, setSesiones] = useState([]);
   const [labs, setLabs] = useState([]);
   const [addSession, setAddSession] = useState(false);
@@ -512,7 +514,7 @@ function PatientDetail({ patient, onUpdate, onBack, initialTab = "resumen" }) {
           <div style={{ fontSize: 12, color: C.muted }}>{localPatient.edad} años · {localPatient.sexo === "F" ? "Femenino" : "Masculino"} · Ingreso: {localPatient.fecha_ingreso}</div>
         </div>
         <div style={{ marginLeft: "auto", display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-          <span style={S.badge(planColor)}>{PLAN_LABELS[localPatient.plan || "sin_plan"]}</span>
+          {localPatient.plan === "plus" ? <PlusBadge /> : <span style={S.badge(planColor)}>{PLAN_LABELS[localPatient.plan || "sin_plan"]}</span>}
           <span style={S.badge(C.accent)}>{localPatient.diagnostico?.split(",")[0]}</span>
         </div>
       </div>
@@ -681,7 +683,7 @@ function PatientList({ patients, onSelect, onAdd }) {
             </div>
             <div style={{ textAlign: "right", fontSize: 11, color: C.muted }}>
               <div>Ingreso: {p.fecha_ingreso}</div>
-              {p.plan && p.plan !== "sin_plan" && <div style={{ marginTop: 4 }}><span style={S.badge(PLAN_COLORS[p.plan])}>{PLAN_LABELS[p.plan]}</span></div>}
+              {p.plan && p.plan !== "sin_plan" && <div style={{ marginTop: 4 }}><PlusBadge /></div>}
             </div>
           </div>
         </div>
@@ -720,7 +722,7 @@ function Dashboard({ patients, onGoToMembresias }) {
           <div key={p.id} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
             <div><div style={{ fontWeight: 500, fontSize: 13 }}>{p.nombre}</div><div style={{ fontSize: 11, color: C.muted }}>{p.diagnostico?.split(",")[0]}</div></div>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-              {p.plan && p.plan !== "sin_plan" && <span style={S.badge(PLAN_COLORS[p.plan])}>{PLAN_LABELS[p.plan]}</span>}
+              {p.plan && p.plan !== "sin_plan" && <PlusBadge />}
               <span style={{ fontSize: 11, color: C.muted }}>Ingreso: {p.fecha_ingreso}</span>
             </div>
           </div>
@@ -816,7 +818,7 @@ export default function App() {
     setQrError('');
     resolveQr(window.location.origin + '/' + qrHash).then(patient => {
       if (!active) return;
-      setDetailTab('membresía'); setSelected(patient); setAddingPatient(false); setView('patients');
+      setDetailTab('sesiones'); setSelected(patient); setAddingPatient(false); setView('patients');
       const clean = new URL(window.location.href);
       clean.searchParams.delete('membresia');
       if (new URLSearchParams(clean.hash.slice(1)).has('membresia')) clean.hash = '';
@@ -876,7 +878,7 @@ export default function App() {
             <PatientList patients={patients} onSelect={p => { setDetailTab("resumen"); setSelected(p); }} onAdd={() => setAddingPatient(true)} />
           )}
           {!loadingPatients && view === "membresias" && !selected && (
-            <><MembershipLookup onSelect={handleSelectFromMembresias} /><MembresiasView
+            <><MembershipLookup onSelect={p => { setDetailTab("sesiones"); setSelected(p); setAddingPatient(false); setView("patients"); }} /><MembresiasView
               patients={patients}
               onSelectPatient={handleSelectFromMembresias}
               onUpdate={(updated) => setPatients(prev => prev.map(p => p.id === updated.id ? updated : p))}
@@ -896,5 +898,6 @@ export default function App() {
     </div>
   );
 }
+
 
 
