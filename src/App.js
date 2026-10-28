@@ -1,3 +1,4 @@
+import Evaluations, { confirmLeaveEvaluation } from './Evaluations';
 import PlusBadge from './PlusBadge';
 import BalanceStatus from './BalanceStatus';
 import { resolveQr } from './qr';
@@ -458,7 +459,7 @@ function PatientForm({ patient, onSave, onCancel }) {
             {sec.fields.map(([k, lbl, type, opts]) => (
               <Field key={k} label={lbl}>
                 {type === "textarea" ? <textarea style={S.textarea} value={vals[k] || ""} onChange={(e) => set(k, e.target.value)} />
-                  : type === "select" ? <select style={S.select} value={vals[k] || ""} onChange={(e) => set(k, e.target.value)}>{opts.map(o => <option key={o}>{o}</option>)}</select>
+                  : type === "select" ? <select style={S.select} value={vals[k] || ""} onChange={(e) => set(k, e.target.value)}><option value="">Seleccionar</option>{opts.map(o => <option key={o}>{o}</option>)}</select>
                   : <input style={S.input} type={type} value={vals[k] || ""} onChange={(e) => set(k, e.target.value)} />}
               </Field>
             ))}
@@ -520,11 +521,12 @@ function PatientDetail({ patient, onUpdate, onBack, initialTab = "resumen" }) {
       </div>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 20, borderBottom: `1px solid ${C.border}` }}>
-        {["resumen", "membresía", "sesiones", "laboratorios", "perfil"].map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{ background: "none", border: "none", borderBottom: `2px solid ${tab === t ? C.accent : "transparent"}`, color: tab === t ? C.accent : C.muted, padding: "8px 16px", cursor: "pointer", fontWeight: tab === t ? 600 : 400, fontSize: 13, textTransform: "capitalize" }}>{t}</button>
+        {["resumen", "evaluaciones", "membresía", "sesiones", "laboratorios", "perfil"].map(t => (
+          <button key={t} onClick={() => { if (t === tab || confirmLeaveEvaluation()) setTab(t); }} style={{ background: "none", border: "none", borderBottom: `2px solid ${tab === t ? C.accent : "transparent"}`, color: tab === t ? C.accent : C.muted, padding: "8px 16px", cursor: "pointer", fontWeight: tab === t ? 600 : 400, fontSize: 13, textTransform: "capitalize" }}>{t}</button>
         ))}
       </div>
 
+      {tab === "evaluaciones" && <Evaluations patient={localPatient} labs={labs} />}
       {loading && <div style={{ color: C.muted, padding: 20 }}>Cargando datos...</div>}
 
       {!loading && tab === "resumen" && (
@@ -853,13 +855,13 @@ export default function App() {
       <aside className="nucleo-sidebar" style={S.sidebar}>
         <div style={S.logo}><div style={S.logoText}>NÚCLEO</div><div style={S.logoSub}>Centrados en ti.</div></div>
         {navItems.map(([key, icon, label]) => (
-          <button type="button" className="nucleo-nav" aria-current={view === key && !selected && !addingPatient ? "page" : undefined} key={key} style={S.navItem(view === key && !selected && !addingPatient)} onClick={() => { setView(key); setSelected(null); setAddingPatient(false); }}>
+          <button type="button" className="nucleo-nav" aria-current={view === key && !selected && !addingPatient ? "page" : undefined} key={key} style={S.navItem(view === key && !selected && !addingPatient)} onClick={() => { if (!confirmLeaveEvaluation()) return; setView(key); setSelected(null); setAddingPatient(false); }}>
             <span aria-hidden="true">{icon}</span><span>{label}</span>
           </button>
         ))}
         <div style={{ marginTop: "auto", padding: "0 20px" }}>
           <div style={{ fontSize: 11, color: C.muted }}>Salud metabólica integral</div>
-          <button style={{ ...S.btn("secondary"), width: "100%", marginTop: 8, fontSize: 12 }} onClick={async () => { setAuth(false); setPatients([]); setSelected(null); setAddingPatient(false); await supabase.auth.signOut({ scope: "local" }); }}>Cerrar sesión</button>
+          <button style={{ ...S.btn("secondary"), width: "100%", marginTop: 8, fontSize: 12 }} onClick={async () => { if (!confirmLeaveEvaluation()) return; setAuth(false); setPatients([]); setSelected(null); setAddingPatient(false); await supabase.auth.signOut({ scope: "local" }); }}>Cerrar sesión</button>
         </div>
       </aside>
       <div className="nucleo-main" style={S.main}>
@@ -884,13 +886,13 @@ export default function App() {
               onUpdate={(updated) => setPatients(prev => prev.map(p => p.id === updated.id ? updated : p))}
             /></>
           )}
-          {addingPatient && <PatientForm onSave={(p) => { setPatients(prev => [p, ...prev]); setSelected(p); setAddingPatient(false); setView("patients"); }} onCancel={() => setAddingPatient(false)} />}
+          {addingPatient && <PatientForm onSave={(p) => { setDetailTab("evaluaciones"); setPatients(prev => [p, ...prev]); setSelected(p); setAddingPatient(false); setView("patients"); }} onCancel={() => setAddingPatient(false)} />}
           {selected && (
             <PatientDetail key={selected.id}
               initialTab={detailTab}
               patient={selected}
               onUpdate={(updated) => { setPatients(prev => prev.map(p => p.id === updated.id ? updated : p)); setSelected(updated); }}
-              onBack={() => { setSelected(null); }}
+              onBack={() => { if (confirmLeaveEvaluation()) setSelected(null); }}
             />
           )}
         </div>
@@ -898,6 +900,3 @@ export default function App() {
     </div>
   );
 }
-
-
-

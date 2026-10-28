@@ -5,10 +5,11 @@ import App from './App';
 import PatientCard from './PatientCard';
 import reportWebVitals from './reportWebVitals';
 
+const EvaluationDemo = React.lazy(() => import('./EvaluationDemo'));
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    {new URLSearchParams(window.location.hash.slice(1)).has('tarjeta')
+    {process.env.REACT_APP_EVAL_DEMO === "true" ? <React.Suspense fallback="Cargando demostración..."><EvaluationDemo /></React.Suspense> : new URLSearchParams(window.location.hash.slice(1)).has('tarjeta')
       ? <PatientCard token={new URLSearchParams(window.location.hash.slice(1)).get('tarjeta')} />
       : <App />}
   </React.StrictMode>
