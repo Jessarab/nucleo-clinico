@@ -33,10 +33,12 @@ export function stopBang(d) {
  return {values,score,risk:score>=5||(stop>=2&&(values[4]||values[6]||values[7]))?'Alto':score>=3?'Intermedio':'Bajo'};
 }
 export function suggestedEoss(d) { const vals=domains.map(([k])=>number(d['eoss_'+k])); return vals.some(v=>v===null||v<0||v>4)?null:Math.max(...vals); }
-export function blankEvaluation(patient) { return {protocol:PROTOCOL,type:'Inicial',date:today(),sex:patient.sexo||'',birth:'',reason:patient.motivo_consulta||'',family:patient.ant_heredofam||'',personal:patient.ant_patologicos||'',allergies:patient.alergias||'',medications:patient.medicamentos||'',sleep:patient.hab_sueno||'',exercise:patient.hab_ejercicio||'',alcohol:patient.hab_alcohol||'',tobacco:patient.hab_tabaco||'',reviewed:{},studies:{},labs:{},cvMode:'pending',eossStatus:'pending'}; }
+export function blankEvaluation(patient, previous) { const base = {protocol:PROTOCOL,captureVersion:2,type:'Inicial',date:today(),sex:patient.sexo||'',birth:'',reason:patient.motivo_consulta||'',family:patient.ant_heredofam||'',personal:patient.ant_patologicos||'',allergies:patient.alergias||'',medications:patient.medicamentos||'',sleep:patient.hab_sueno||'',exercise:patient.hab_ejercicio||'',alcohol:patient.hab_alcohol||'',tobacco:patient.hab_tabaco||'',reviewed:{},studies:{},labs:{},cvMode:'pending',eossStatus:'pending'};
+ if(previous) for(const key of ['birth','sex','clinician','license','family','personal','allergies','medications','trajectory','previous','previousType','weightOnset']) if(previous[key]) base[key]=previous[key];
+ return base; }
 export function followupEvaluation(patient,record) {
  const next=blankEvaluation(patient);
- for(const key of ['birth','sex','clinician','license','family','personal','allergies','medications','trajectory','previous']) next[key]=record.datos[key]||'';
+ for(const key of ['birth','sex','clinician','license','family','personal','allergies','medications','trajectory','previous','previousType','weightOnset']) next[key]=record.datos[key]||'';
  return {...next,type:'Seguimiento',previousEvaluation:record.id};
 }
 export function validate(d,final=false) {
@@ -52,9 +54,9 @@ export function validate(d,final=false) {
  if(final) {
  if(ageAt(d.birth,d.date)===null||ageAt(d.birth,d.date)<18) errors.push('Esta evaluación está diseñada para adultos; verifica fecha de nacimiento.');
  if(!d.clinician?.trim()||!d.diagnosis?.trim()||!d.plan?.trim()||!d.followup?.trim()) errors.push('Completa responsable, diagnósticos, plan y seguimiento.');
- if(sections.some(([k])=>!d.reviewed?.[k])) errors.push('Revisa todos los bloques antes de finalizar; documenta lo que quede pendiente.');
+ if(d.captureVersion===2?!d.closingReviewed:sections.some(([k])=>!d.reviewed?.[k])) errors.push('Confirma la revisión del cierre antes de finalizar.');
  if(d.eossStatus!=='confirmed'&&!d.eossReason?.trim()) errors.push('Indica por qué EOSS está pendiente o no aplica.');
- if((stopBang(d).score===null||d.cvMode==='pending')&&!d.pending?.trim()) errors.push('Documenta las evaluaciones pendientes en el plan del paciente.');
+ if(d.captureVersion!==2&&(stopBang(d).score===null||d.cvMode==='pending')&&!d.pending?.trim()) errors.push('Documenta las evaluaciones pendientes en el plan del paciente.');
  }
  return errors;
 }
@@ -65,6 +67,6 @@ export function reportSections(d) {
  ['Mediciones', [...measures.map(([k,l])=>[l,d[k]]),['IMC (kg/m²)',b===null?'No disponible':b.toFixed(1)],['Relación cintura / talla',Number(d.waist)>0&&Number(d.height)>0?(d.waist/d.height).toFixed(2):'No disponible']]],
  ['Evaluaciones', [['STOP-Bang',s.score===null?'Incompleto':`${s.score}/8 - Riesgo ${s.risk.toLowerCase()}. Tamizaje; no confirma apnea.`],['Riesgo cardiovascular',d.cvMode==='recorded'?`${d.cvRisk}% a 10 años. ${d.cvVersion}. Resultado registrado por el profesional.`:d.cvMode==='notApplicable'?`No aplica: ${d.cvReason}`:'Pendiente'],['Datos y fecha del cálculo',d.cvMode==='recorded'?`${d.cvDate}; ${d.cvInputs}; fuente: ${d.cvSource}`:''],['EOSS',d.eossStatus==='confirmed'?`Estadio ${d.eossConfirmed}: ${stages[Number(d.eossConfirmed)]}`:`${d.eossStatus==='notApplicable'?'No aplica':'Pendiente'}: ${d.eossReason||'Requiere valoración'}`],['Explicación EOSS para el paciente',d.eossPatient]]],
  ['Laboratorios', [['Fecha de muestra',d.labDate],...labFields.map(([k,l])=>[l,d.labs?.[k]]),['Interpretación',d.labInterpretation]]],
- ['Acuerdos y seguimiento', [['Orientación',d.advice],['Plan',d.plan],['Objetivos acordados',d.agreed],['Seguimiento',d.followup],['Pendientes',d.pending],...Object.entries(d.studies||{}).filter(([,v])=>v.status).map(([k,v])=>[k,`${v.status}. ${v.reason||''}`])]],
+ ['Acuerdos y seguimiento', [['Orientación',d.advice],['Plan',d.plan],['Objetivos acordados',d.agreed],['Seguimiento',[d.followup,d.followupDetail].filter(Boolean).join('. ')],['Pendientes',d.captureVersion===2?[d.pending,s.score===null?'Completar tamizaje STOP-Bang.':'',(!d.cvMode||d.cvMode==='pending')?'Completar evaluación de riesgo cardiovascular.':'',d.eossStatus!=='confirmed'?'Completar valoración EOSS.':''].filter(Boolean).join(' '):d.pending],...Object.entries(d.studies||{}).filter(([,v])=>v.status).map(([k,v])=>[k,`${v.status}. ${v.reason||''}`])]],
  ].map(([title,rows])=>[title,rows.filter(([,v])=>v!==undefined&&v!==null&&v!=='')]);
 }

@@ -23,3 +23,15 @@ test('uncertain network save retries the same immutable request',async()=>{
  fireEvent.click(screen.getByText('Guardar borrador'));await screen.findByText('Versión guardada.');
  expect(repository.save.mock.calls[1][0]).toEqual(repository.save.mock.calls[0][0]);
 });
+
+test('brief form reveals only selected studies and preserves choices when saved',async()=>{
+ const repository={list:jest.fn().mockResolvedValue([]),save:jest.fn(async row=>row)};
+ render(<Evaluations patient={{id:'quick',nombre:'Prueba'}} repository={repository}/>);
+ await waitFor(()=>expect(screen.getByText('Nueva evaluación')).not.toBeDisabled());fireEvent.click(screen.getByText('Nueva evaluación'));
+ expect(screen.queryByLabelText('Indicación / resultado: Estudio de sueño')).not.toBeInTheDocument();
+ fireEvent.change(screen.getByLabelText('Agregar estudio o referencia'),{target:{value:'Estudio de sueño'}});
+ fireEvent.change(screen.getByLabelText('Indicación / resultado: Estudio de sueño'),{target:{value:'Indicación de prueba'}});
+ fireEvent.click(screen.getByLabelText('Acepta abordarlo hoy'));
+ fireEvent.click(screen.getByText('Guardar borrador'));await screen.findByText('Versión guardada.');
+ expect(repository.save.mock.calls[0][0].datos).toMatchObject({captureVersion:2,permission:'Acepta abordarlo hoy',studies:{'Estudio de sueño':{status:'Indicado',reason:'Indicación de prueba'}}});
+});

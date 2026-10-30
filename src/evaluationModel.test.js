@@ -9,3 +9,14 @@ test('EOSS uses maximum and zero is explicit',()=>{expect(suggestedEoss({eoss_me
 test('invalid data and unconfirmed finalization blocked',()=>{const d=blankEvaluation({});expect(validate({...d,weight:-1})).not.toHaveLength(0);expect(validate(d,true)).not.toHaveLength(0);expect(validate({...d,eossStatus:'confirmed',eossConfirmed:0})).not.toHaveLength(0);});
 test('report omits internal history and private notes, keeps zero and pending',()=>{const rows=reportSections({...blankEvaluation({}),internalNotes:'PRIVATE',family:'PRIVATE',cvMode:'recorded',cvRisk:0,cvVersion:'México consultorio',labs:{glucosa:0}});const text=JSON.stringify(rows);expect(text).not.toContain('PRIVATE');expect(text).toContain('0%');expect(text).toContain('Incompleto');});
 test('followup preserves background but not stale measurements or scores',()=>{const d=followupEvaluation({}, {id:'previous',datos:{birth:'1980-01-01',allergies:'Penicilina',weight:90,cvRisk:12,cvMode:'recorded',snoring:'yes',eossConfirmed:'2',labs:{glucosa:120}}});expect(d).toMatchObject({birth:'1980-01-01',allergies:'Penicilina',type:'Seguimiento',previousEvaluation:'previous',cvMode:'pending',labs:{}});expect(d.weight).toBeUndefined();expect(d.snoring).toBeUndefined();expect(d.eossConfirmed).toBeUndefined();});
+
+test('brief consultation can close with documented pending scales without eight reviews',()=>{
+ const d={...blankEvaluation({}),birth:'1980-01-01',clinician:'Prueba',diagnosis:'Conclusión de prueba',plan:'Plan de prueba',followup:'4 semanas',eossReason:'Se completará en seguimiento',closingReviewed:true};
+ expect(validate(d,true)).toEqual([]);
+ expect(validate({...d,closingReviewed:false},true)).not.toEqual([]);
+ const report=JSON.stringify(reportSections(d));expect(report).toContain('Completar tamizaje STOP-Bang');expect(report).toContain('Completar evaluación de riesgo cardiovascular');
+});
+test('new evaluation reuses background without copying old results',()=>{
+ const d=blankEvaluation({}, {birth:'1980-01-01',clinician:'Prueba',medications:'Registro previo',weight:90,eossStatus:'confirmed',closingReviewed:true});
+ expect(d).toMatchObject({captureVersion:2,birth:'1980-01-01',clinician:'Prueba',medications:'Registro previo',eossStatus:'pending'});expect(d.weight).toBeUndefined();expect(d.closingReviewed).toBeUndefined();
+});
