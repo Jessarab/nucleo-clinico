@@ -40,6 +40,7 @@ export default function Membership({ patient, onUpdate }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [cancellationNeedsRefresh, setCancellationNeedsRefresh] = useState(false);
   const [nutrition, setNutrition] = useState('');
   const [physio, setPhysio] = useState('');
   const [dose, setDose] = useState(patient.dosis_actual || '2.5');
@@ -47,6 +48,9 @@ export default function Membership({ patient, onUpdate }) {
   const operation = useRef(null);
   const lock = useRef(false);
   const pack = packages.find(p => !p.cerrado);
+  const cancellationBalance = pack && {
+    aplicaciones: pack.aplicaciones, nutricion: pack.nutricion, fisioterapia: pack.fisioterapia,
+  };
   const load = useCallback(async () => {
     const { data, error: e } = await supabase.from('paquetes').select('*').eq('paciente_id', patient.id).order('iniciado', { ascending: false });
     if (e) throw e;
@@ -57,6 +61,7 @@ export default function Membership({ patient, onUpdate }) {
       movements = r.data;
     }
     setPackages(data); setMoves(movements);
+    setCancellationNeedsRefresh(false);
   }, [patient.id]);
   useEffect(() => { load().catch(e => setError(e.message)).finally(() => setLoading(false)); }, [load]);
   async function act(action, data = {}) {
@@ -67,7 +72,7 @@ export default function Membership({ patient, onUpdate }) {
     }
     if (!operation.current && !window.confirm(action === 'renovar'
       ? '¿Iniciar un paquete de 4 aplicaciones, 1 nutrición y 1 fisioterapia? Los servicios pendientes del paquete anterior se perderán.'
-      : action === cancellation ? cancellationMessage(pack) : '¿Confirmar este registro? Quedará en el historial de la membresía.')) return;
+      : action === cancellation ? cancellationMessage(data) : '¿Confirmar este registro? Quedará en el historial de la membresía.')) return;
     operation.current ||= { key, id: crypto.randomUUID() };
     lock.current = true; setBusy(true); setError('');
     try {
@@ -75,7 +80,15 @@ export default function Membership({ patient, onUpdate }) {
       operation.current = null;
       onUpdate(result.paciente);
       await load();
-    } catch (e) { if (e.code) operation.current = null; setError(e.message + ' Puedes reintentar la misma operación sin duplicarla.'); }
+    } catch (e) {
+      if (e.code) operation.current = null;
+      if (action === cancellation && e.code === 'P4090') {
+        setCancellationNeedsRefresh(true);
+        setError('El saldo cambió. Pulsa «Actualizar saldos» y vuelve a confirmar la cancelación.');
+      } else {
+        setError(e.message + ' Puedes reintentar la misma operación sin duplicarla.');
+      }
+    }
     finally { lock.current = false; setBusy(false); }
   }
   if (loading) return <p>Cargando membresía…</p>;
@@ -102,7 +115,9 @@ export default function Membership({ patient, onUpdate }) {
       </> : <p>Sin membresía activa.</p>}
       <button style={button} disabled={busy || (!!error && !operation.current) || (pack && pack.aplicaciones > 0)} onClick={() => act('renovar')}>{pack ? 'Renovar membresía' : 'Crear membresía'}</button>
       <button style={button} disabled={busy || !!operation.current} onClick={() => { setError(''); load().catch(e => setError(e.message)); }}>Actualizar saldos</button>
-      {pack && <button style={button} disabled={busy || (!!operation.current && operation.current.key !== JSON.stringify([cancellation, pack.id, {}]))} onClick={() => act(cancellation)}>Pasar a sin membresía</button>}
+      {pack && <button style={button}
+        disabled={busy || cancellationNeedsRefresh || (!!operation.current && operation.current.key !== JSON.stringify([cancellation, pack.id, cancellationBalance]))}
+        onClick={() => act(cancellation, cancellationBalance)}>Pasar a sin membresía</button>}
       {pack?.aplicaciones > 0 && <p>Podrás renovar cuando queden 0 aplicaciones.</p>}
     </div>
     <div style={panel}>

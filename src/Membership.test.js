@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { randomUUID } from 'crypto';
 import Membership from './Membership';
 import { supabase } from './authClient';
@@ -70,7 +70,41 @@ test('envía la cancelación y muestra el saldo registrado por el servidor en el
   expect(supabase.rpc).toHaveBeenCalledTimes(1);
   expect(supabase.rpc).toHaveBeenCalledWith('operar_membresia', {
     p_paciente: patient.id, p_accion: 'sin_membresia', p_paquete: pack.id,
-    p_peticion: expect.any(String), p_datos: {},
+    p_peticion: expect.any(String), p_datos: { aplicaciones: 3, nutricion: 1, fisioterapia: null },
   });
   expect(onUpdate).toHaveBeenCalledWith(updatedPatient);
+});
+
+test('requiere actualizar el saldo y confirmar de nuevo si el paquete cambió', async () => {
+  const updated = { ...pack, aplicaciones: 2 };
+  const packages = jest.fn()
+    .mockResolvedValueOnce({ data: [pack] })
+    .mockResolvedValueOnce({ data: [updated] })
+    .mockResolvedValueOnce({ data: [{ ...updated, cerrado: '2026-11-02' }] });
+  mockHistory(packages, jest.fn().mockResolvedValue({ data: [] }));
+  const confirm = jest.spyOn(window, 'confirm').mockReturnValue(true);
+  supabase.rpc
+    .mockResolvedValueOnce({ error: { code: 'P4090', message: 'El saldo cambió.' } })
+    .mockResolvedValueOnce({ data: { paciente: { ...patient, plan: 'sin_plan' } } });
+  const onUpdate = jest.fn();
+  render(<Membership patient={patient} onUpdate={onUpdate} />);
+
+  const cancel = await screen.findByRole('button', { name: 'Pasar a sin membresía' });
+  fireEvent.click(cancel);
+  expect(await screen.findByRole('alert')).toHaveTextContent(/Actualizar saldos.*vuelve a confirmar/);
+  expect(cancel).toBeDisabled();
+  expect(onUpdate).not.toHaveBeenCalled();
+  expect(confirm).toHaveBeenNthCalledWith(1, expect.stringContaining('Aplicaciones pendientes: 3 de 4'));
+
+  fireEvent.click(screen.getByRole('button', { name: 'Actualizar saldos' }));
+  await waitFor(() => expect(cancel).toBeEnabled());
+  expect(supabase.rpc).toHaveBeenCalledTimes(1);
+  fireEvent.click(cancel);
+
+  expect(await screen.findByRole('button', { name: 'Crear membresía' })).toBeEnabled();
+  expect(confirm).toHaveBeenNthCalledWith(2, expect.stringContaining('Aplicaciones pendientes: 2 de 4'));
+  const [original, refreshed] = supabase.rpc.mock.calls.map(([, args]) => args);
+  expect(refreshed.p_datos).toEqual({ aplicaciones: 2, nutricion: 1, fisioterapia: null });
+  expect(refreshed.p_peticion).not.toBe(original.p_peticion);
+  expect(onUpdate).toHaveBeenCalledTimes(1);
 });

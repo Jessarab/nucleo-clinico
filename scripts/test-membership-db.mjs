@@ -56,13 +56,29 @@ try {
   await assert.rejects(operate('sin_membresia', randomUUID()), /La membresia cambio/);
 
   const request = randomUUID();
-  const cancelled = await operate('sin_membresia', initial.id, request);
+  const balance = { aplicaciones: 3, nutricion: 1, fisioterapia: 0 };
+  for (const stale of [
+    { ...balance, aplicaciones: 4 },
+    { ...balance, nutricion: 0 },
+    { ...balance, fisioterapia: 1 },
+  ]) {
+    await assert.rejects(operate('sin_membresia', initial.id, request, stale), {
+      code: 'P4090', message: /Actualiza los saldos y vuelve a confirmar/,
+    });
+  }
+  await assert.rejects(operate('sin_membresia', initial.id), /Consume las aplicaciones pendientes/);
+  const { rows: active } = await db.query('SELECT cerrado FROM public.paquetes WHERE id=$1', [initial.id]);
+  assert.equal(active[0].cerrado, null);
+  const { rows: rejected } = await db.query('SELECT id FROM public.operaciones_membresia WHERE id=$1', [request]);
+  assert.deepEqual(rejected, []);
+
+  const cancelled = await operate('sin_membresia', initial.id, request, balance);
   assert.equal(cancelled.paciente.plan, 'sin_plan');
   assert.equal(cancelled.paciente.apps_total, 0);
   assert.equal(cancelled.paciente.apps_usadas, 0);
   assert.equal(cancelled.paciente.fecha_inicio_plan, null);
   assert.equal(cancelled.paquete, null);
-  assert.deepEqual(await operate('sin_membresia', initial.id, request), cancelled);
+  assert.deepEqual(await operate('sin_membresia', initial.id, request, balance), cancelled);
   await assert.rejects(operate('sin_membresia'), /No hay membresia activa/);
 
   const { rows: closed } = await db.query('SELECT aplicaciones, cerrado FROM public.paquetes WHERE id=$1', [initial.id]);
@@ -84,19 +100,24 @@ try {
 
   // Also cover older packages whose included services have yet to be confirmed.
   await db.query('UPDATE public.paquetes SET aplicaciones=0, nutricion=NULL, fisioterapia=NULL, importado=true WHERE id=$1', [next.id]);
-  await operate('sin_membresia', next.id);
+  await operate('sin_membresia', next.id, randomUUID(), { aplicaciones: 0, nutricion: null, fisioterapia: null });
   const { rows: legacy } = await db.query("SELECT detalle FROM public.movimientos_membresia WHERE paquete_id=$1 AND tipo='cierre_sin_membresia'", [next.id]);
   assert.deepEqual(legacy[0].detalle, { aplicaciones_perdidas: 0, nutricion_perdida: null, fisioterapia_perdida: null });
 
   const current = (await operate('renovar')).paquete;
   await db.query('UPDATE public.paquetes SET aplicaciones=0 WHERE id=$1', [current.id]);
-  assert.equal((await operate('renovar', current.id)).paquete.aplicaciones, 4);
+  const renewed = (await operate('renovar', current.id)).paquete;
+  assert.equal(renewed.aplicaciones, 4);
   const { rows: renewal } = await db.query("SELECT detalle FROM public.movimientos_membresia WHERE paquete_id=$1 AND tipo='cierre_por_renovacion'", [current.id]);
   assert.deepEqual(renewal[0].detalle, { nutricion_perdida: 1, fisioterapia_perdida: 1 });
 
+  // The deployed app still cancels exhausted packages without sending the balance.
+  await db.query('UPDATE public.paquetes SET aplicaciones=0 WHERE id=$1', [renewed.id]);
+  assert.equal((await operate('sin_membresia', renewed.id)).paciente.plan, 'sin_plan');
+
   await db.exec('CREATE OR REPLACE FUNCTION public.es_admin_clinico() RETURNS boolean LANGUAGE sql AS $$ SELECT false $$');
   await assert.rejects(operate('sin_membresia'), /Acceso no autorizado/);
-  console.log('PASS: cancelación, saldo perdido, historial, reintento, nueva membresía, renovación y permisos');
+  console.log('PASS: cancelación, saldo desactualizado, historial, reintento, cliente anterior, renovación y permisos');
 } finally {
   await db.close();
 }

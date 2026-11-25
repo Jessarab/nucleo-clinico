@@ -41,6 +41,17 @@ BEGIN
    INSERT INTO public.movimientos_membresia(paquete_id,responsable,tipo) VALUES(pack.id,auth.uid(),'alta');
  ELSIF p_accion='sin_membresia' THEN
    IF pack.id IS NULL THEN RAISE EXCEPTION 'No hay membresia activa'; END IF;
+   IF p_datos='{}'::jsonb THEN
+     -- The previous app only offered cancellation for a package with no applications left.
+     IF pack.aplicaciones IS DISTINCT FROM 0 THEN
+       RAISE EXCEPTION 'Consume las aplicaciones pendientes antes de pasar a sin membresia';
+     END IF;
+   ELSIF p_datos IS DISTINCT FROM jsonb_build_object(
+     'aplicaciones',pack.aplicaciones,'nutricion',pack.nutricion,'fisioterapia',pack.fisioterapia
+   ) THEN
+     RAISE EXCEPTION USING ERRCODE='P4090',
+       MESSAGE='El saldo cambió. Actualiza los saldos y vuelve a confirmar la cancelación.';
+   END IF;
    UPDATE public.paquetes SET cerrado=now() WHERE id=pack.id;
    INSERT INTO public.movimientos_membresia(paquete_id,responsable,tipo,detalle)
      VALUES(pack.id,auth.uid(),'cierre_sin_membresia',jsonb_build_object(
